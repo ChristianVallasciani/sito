@@ -2,56 +2,65 @@
 $registrationError = '';
 $registrationSuccess = '';
 $formData = [
-    'name' => '',
-    'surname' => '',
-    'email' => ''
+  'name' => '',
+  'surname' => '',
+  'email' => ''
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $formData['name'] = trim($_POST['name'] ?? '');
-    $formData['surname'] = trim($_POST['surname'] ?? '');
-    $formData['email'] = trim($_POST['email'] ?? '');
-    $password = trim($_POST['password'] ?? '');
-    $confirmPassword = trim($_POST['confirm_password'] ?? '');
+  $formData['name'] = trim($_POST['name'] ?? '');
+  $formData['surname'] = trim($_POST['surname'] ?? '');
+  $formData['email'] = trim($_POST['email'] ?? '');
+  $password = trim($_POST['password'] ?? '');
+  $confirmPassword = trim($_POST['confirm_password'] ?? '');
 
-    if (in_array('', $formData, true) || $password === '' || $confirmPassword === '') {
-        $registrationError = 'Compila tutti i campi per continuare.';
-    } elseif (!preg_match('/^[A-Za-z]+$/', $formData['name']) || !preg_match('/^[A-Za-z]+$/', $formData['surname'])) {
-        $registrationError = 'Nome e cognome possono contenere solo lettere.';
-    } elseif (!filter_var($formData['email'], FILTER_VALIDATE_EMAIL)) {
-        $registrationError = 'Inserisci un indirizzo email valido.';
-    } elseif ($password !== $confirmPassword) {
-        $registrationError = 'Le password non coincidono.';
-    } elseif (strlen($password) < 8) {
-        $registrationError = 'La password deve contenere almeno 8 caratteri.';
+  if (in_array('', $formData, true) || $password === '' || $confirmPassword === '') {
+    $registrationError = 'Compila tutti i campi per continuare.';
+  } elseif (!preg_match('/^[A-Za-z]+$/', $formData['name']) || !preg_match('/^[A-Za-z]+$/', $formData['surname'])) {
+    $registrationError = 'Nome e cognome possono contenere solo lettere.';
+  } elseif (!filter_var($formData['email'], FILTER_VALIDATE_EMAIL)) {
+    $registrationError = 'Inserisci un indirizzo email valido.';
+  } elseif ($password !== $confirmPassword) {
+    $registrationError = 'Le password non coincidono.';
+  } elseif (strlen($password) < 8) {
+    $registrationError = 'La password deve contenere almeno 8 caratteri.';
+  } else {
+    require_once 'connessione.php';
+
+    $nomeEsc = mysqli_real_escape_string($conn, $formData['name']);
+    $cognomeEsc = mysqli_real_escape_string($conn, $formData['surname']);
+    $emailEsc = mysqli_real_escape_string($conn, $formData['email']);
+
+    // Fase 1: costruzione query SELECT per verificare esistenza email
+    $queryCheck = "SELECT id FROM utenti WHERE email = '$emailEsc' LIMIT 1";
+    // Fase 2: esecuzione query
+    $risultatoCheck = mysqli_query($conn, $queryCheck)
+      or die('Errore SELECT: ' . mysqli_error($conn) . ' ' . mysqli_errno($conn));
+
+    if (mysqli_num_rows($risultatoCheck) > 0) {
+      $registrationError = 'Esiste gia un account associato a questa email.';
     } else {
-        require_once 'connessione.php';
+      // Fase 1: costruzione query INSERT
+      $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+      $passwordEsc = mysqli_real_escape_string($conn, $passwordHash);
+      $queryInsert = "INSERT INTO utenti (nome, cognome, email, password) VALUES ('$nomeEsc', '$cognomeEsc', '$emailEsc', '$passwordEsc')";
+      // Fase 2: invio comando SQL
+      mysqli_query($conn, $queryInsert)
+        or die('Errore INSERT: ' . mysqli_error($conn) . ' ' . mysqli_errno($conn));
 
-        $checkStmt = mysqli_prepare($conn, 'SELECT id FROM utenti WHERE email = ? LIMIT 1');
-        mysqli_stmt_bind_param($checkStmt, 's', $formData['email']);
-        mysqli_stmt_execute($checkStmt);
-        mysqli_stmt_store_result($checkStmt);
-
-        if (mysqli_stmt_num_rows($checkStmt) > 0) {
-            $registrationError = 'Esiste gia un account associato a questa email.';
-        } else {
-            $passwordHash = password_hash($password, PASSWORD_DEFAULT);
-            $insertStmt = mysqli_prepare($conn, 'INSERT INTO utenti (nome, cognome, email, password) VALUES (?, ?, ?, ?)');
-            mysqli_stmt_bind_param($insertStmt, 'ssss', $formData['name'], $formData['surname'], $formData['email'], $passwordHash);
-
-            if (mysqli_stmt_execute($insertStmt)) {
-                $registrationSuccess = 'Registrazione completata! Ora puoi accedere.';
-                $formData = ['name' => '', 'surname' => '', 'email' => ''];
-            } else {
-                $registrationError = 'Si e verificato un errore durante la registrazione. Riprova piu tardi.';
-            }
-
-            mysqli_stmt_close($insertStmt);
-        }
-
-        mysqli_stmt_close($checkStmt);
-        mysqli_close($conn);
+      // Fase 3: valutazione esito
+      if (mysqli_affected_rows($conn) === 1) {
+        $registrationSuccess = 'Registrazione completata! Ora puoi accedere.';
+        $formData = ['name' => '', 'surname' => '', 'email' => ''];
+      } else {
+        $registrationError = 'Si e verificato un errore durante la registrazione. Riprova piu tardi.';
+      }
     }
+
+    mysqli_free_result($risultatoCheck);
+    mysqli_close($conn)
+      or die('Errore chiusura: ' . mysqli_error($conn) . ' ' . mysqli_errno($conn));
+  }
 }
 ?>
 <!doctype html>

@@ -6,43 +6,46 @@ $loginSuccess = '';
 $loginForm = ['email' => ''];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $loginForm['email'] = trim($_POST['email'] ?? '');
-    $password = trim($_POST['password'] ?? '');
+  $loginForm['email'] = trim($_POST['email'] ?? '');
+  $password = trim($_POST['password'] ?? '');
 
-    if ($loginForm['email'] === '' || $password === '') {
-        $loginError = 'Inserisci email e password.';
-    } elseif (!filter_var($loginForm['email'], FILTER_VALIDATE_EMAIL)) {
-        $loginError = 'Formato email non valido.';
+  if ($loginForm['email'] === '' || $password === '') {
+    $loginError = 'Inserisci email e password.';
+  } elseif (!filter_var($loginForm['email'], FILTER_VALIDATE_EMAIL)) {
+    $loginError = 'Formato email non valido.';
+  } else {
+    require_once 'connessione.php';
+
+    $emailEsc = mysqli_real_escape_string($conn, $loginForm['email']);
+
+    // Fase 1: costruzione query SELECT
+    $query = "SELECT id, nome, cognome, email, password FROM utenti WHERE email = '$emailEsc' LIMIT 1";
+    // Fase 2: esecuzione query
+    $risultato = mysqli_query($conn, $query)
+      or die('Errore SELECT: ' . mysqli_error($conn) . ' ' . mysqli_errno($conn));
+
+    if (mysqli_num_rows($risultato) === 0) {
+      $loginError = 'Non esiste alcun account associato a questa email. Registrati prima di accedere.';
     } else {
-      require_once 'connessione.php';
+      $utente = mysqli_fetch_assoc($risultato);
 
-      $stmt = mysqli_prepare($conn, 'SELECT id, nome, cognome, email, password FROM utenti WHERE email = ? LIMIT 1');
-      mysqli_stmt_bind_param($stmt, 's', $loginForm['email']);
-      mysqli_stmt_execute($stmt);
-      mysqli_stmt_store_result($stmt);
-
-      if (mysqli_stmt_num_rows($stmt) === 0) {
-        $loginError = 'Non esiste alcun account associato a questa email. Registrati prima di accedere.';
+      if ($utente && password_verify($password, $utente['password'])) {
+        $_SESSION['user'] = [
+          'id' => $utente['id'],
+          'nome' => $utente['nome'],
+          'cognome' => $utente['cognome'],
+          'email' => $utente['email']
+        ];
+        $loginSuccess = 'Bentornato ' . htmlspecialchars($utente['nome'] . ' ' . $utente['cognome'], ENT_QUOTES, 'UTF-8') . '!';
       } else {
-        mysqli_stmt_bind_result($stmt, $userId, $nome, $cognome, $emailDb, $passwordHash);
-        mysqli_stmt_fetch($stmt);
-
-        if (password_verify($password, $passwordHash)) {
-          $_SESSION['user'] = [
-            'id' => $userId,
-            'nome' => $nome,
-            'cognome' => $cognome,
-            'email' => $emailDb
-          ];
-          $loginSuccess = 'Bentornato ' . htmlspecialchars($nome . ' ' . $cognome, ENT_QUOTES, 'UTF-8');
-        } else {
-          $loginError = 'Password errata. Riprova.';
-        }
+        $loginError = 'Password errata. Riprova.';
       }
-
-      mysqli_stmt_close($stmt);
-      mysqli_close($conn);
     }
+
+    mysqli_free_result($risultato);
+    mysqli_close($conn)
+      or die('Errore chiusura: ' . mysqli_error($conn) . ' ' . mysqli_errno($conn));
+  }
 }
 ?>
 <!doctype html>
