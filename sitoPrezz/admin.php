@@ -1,5 +1,5 @@
 <?php
-$db = mysqli_connect("localhost", "ina5", "Venita3#", "ina5_pietroni");
+include "connessione.php";
 
 if (!isset($_COOKIE['email'])) {
     header("Location: login.php");
@@ -7,27 +7,27 @@ if (!isset($_COOKIE['email'])) {
 }
 
 $email = $_COOKIE['email'];
-$query = mysqli_query($db, "SELECT * FROM users WHERE email = '$email'");
-$utente = mysqli_fetch_assoc($query);
+$query = mysqli_query($conn, "SELECT * FROM users WHERE email = '$email'");
+$utente = $query ? mysqli_fetch_assoc($query) : null;
 
-if ($utente['tipo'] != 1) {
+if (!$utente || (int)$utente['ruolo'] !== 1) {
     header("Location: index.php");
     exit;
 }
 
 if (isset($_POST['cambia'])) {
     $email = $_POST['email'];
-    $nuovo_tipo = (int)$_POST['tipo'];
+    $nuovo_ruolo = (int)$_POST['ruolo'];
 
-    mysqli_query($db, "UPDATE users SET tipo = $nuovo_tipo WHERE email = '$email'");
+    mysqli_query($conn, "UPDATE users SET ruolo = $nuovo_ruolo WHERE email = '$email'");
 }
 
 if (isset($_POST['cancella'])) {
     $email = $_POST['email'];
-    mysqli_query($db, "DELETE FROM users WHERE email = '$email'");
+    mysqli_query($conn, "DELETE FROM users WHERE email = '$email'");
 }
 
-$users = mysqli_query($db, "SELECT * FROM users");
+$users = mysqli_query($conn, "SELECT * FROM users");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -37,7 +37,7 @@ $users = mysqli_query($db, "SELECT * FROM users");
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     </head>
     <body>
-        <?php include "header.php"; ?>
+        <?php include "header.html"; ?>
         <div class="container mt-5">
             <h3 class="mb-4">Pannello Admin</h3>
             <table class="table table-bordered text-center">
@@ -53,14 +53,14 @@ $users = mysqli_query($db, "SELECT * FROM users");
                 <?php while ($u = mysqli_fetch_assoc($users)) { ?>
                     <tr>
                         <td><?= $u['email'] ?></td>
-                        <td><?= $u['tipo'] == 1 ? 'Admin' : 'Utente' ?></td>
+                        <td><?= $u['ruolo'] == 1 ? 'Admin' : 'Utente' ?></td>
 
                         <td>
                             <form method="post" class="d-flex justify-content-center gap-2">
                                 <input type="hidden" name="email" value="<?= $u['email'] ?>">
-                                <select name="tipo" class="form-select form-select-sm w-auto">
-                                    <option value="0">Utente</option>
-                                    <option value="1">Admin</option>
+                                <select name="ruolo" class="form-select form-select-sm w-auto">
+                                    <option value="0" <?= $u['ruolo'] == 0 ? 'selected' : '' ?>>Utente</option>
+                                    <option value="1" <?= $u['ruolo'] == 1 ? 'selected' : '' ?>>Admin</option>
                                 </select>
                                 <button name="cambia" class="btn btn-primary btn-sm">Cambia</button>
                             </form>

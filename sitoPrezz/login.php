@@ -33,7 +33,7 @@ include "connessione.php";
       $password = trim($_POST['password'] ?? '');
       $ricordami = isset($_POST['remember']);
    
-      $query = "SELECT * FROM utenti WHERE email='$email'";
+      $query = "SELECT * FROM users WHERE email='$email'";
       $result = mysqli_query($conn, $query);
       if (!$result || mysqli_num_rows($result) == 0) {
         echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>Errore: utente non trovato.</div>";

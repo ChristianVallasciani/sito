@@ -8,7 +8,9 @@ if (!isset($_COOKIE['email'])) {
 
 $email = $_COOKIE['email'];
 
-$query = mysqli_query($conn, "SELECT * FROM utenti WHERE email = '$email'");
+
+
+$query = mysqli_query($conn, "SELECT * FROM users WHERE email = '$email'");
 
 $utente = mysqli_fetch_assoc($query);
 ?>
@@ -37,7 +39,7 @@ $utente = mysqli_fetch_assoc($query);
                         </p>
                         <p class="mb-3">
                             <strong>Tipo utente:</strong><br>
-                            <?php echo $utente['tipo'] == 0 ? 'Utente' : 'Admin'; ?>
+                            <?php echo isset($utente['ruolo']) && (int)$utente['ruolo'] === 1 ? 'Admin' : 'Utente'; ?>
                         </p>
                         <h6>Indirizzi associati:</h6>
                         <ul class="list-unstyled">
@@ -60,7 +62,7 @@ $utente = mysqli_fetch_assoc($query);
                         </ul>
                         <a href="indirizzo.php" class="btn btn-outline-primary btn-sm mb-3">Aggiungi indirizzo</a>
                         <?php 
-                            if($utente['tipo'] == 1) 
+                            if(isset($utente['ruolo']) && (int)$utente['ruolo'] === 1) 
                             {
                                 echo "<a href='admin.php' class='btn btn-primary btn-sm'>Pannello Admin</a>";
                             }
