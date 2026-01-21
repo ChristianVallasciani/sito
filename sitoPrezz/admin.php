@@ -7,7 +7,7 @@ if (!isset($_COOKIE['email'])) {
 }
 
 $email = $_COOKIE['email'];
-$query = mysqli_query($conn, "SELECT * FROM users WHERE email = '$email'");
+$query = mysqli_query($conn, "SELECT * FROM utenti WHERE email = '$email'");
 $utente = $query ? mysqli_fetch_assoc($query) : null;
 
 if (!$utente || (int)$utente['ruolo'] !== 1) {
@@ -19,15 +19,15 @@ if (isset($_POST['cambia'])) {
     $email = $_POST['email'];
     $nuovo_ruolo = (int)$_POST['ruolo'];
 
-    mysqli_query($conn, "UPDATE users SET ruolo = $nuovo_ruolo WHERE email = '$email'");
+    mysqli_query($conn, "UPDATE utenti SET ruolo = $nuovo_ruolo WHERE email = '$email'");
 }
 
 if (isset($_POST['cancella'])) {
     $email = $_POST['email'];
-    mysqli_query($conn, "DELETE FROM users WHERE email = '$email'");
+    mysqli_query($conn, "DELETE FROM utenti WHERE email = '$email'");
 }
 
-$users = mysqli_query($conn, "SELECT * FROM users");
+$users = mysqli_query($conn, "SELECT * FROM utenti");
 ?>
 <!DOCTYPE html>
 <html lang="en">
