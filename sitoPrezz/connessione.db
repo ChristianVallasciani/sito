@@ -1,9 +1,0 @@
-<?php
-$host = "localhost";     // oppure IP del server
-$user = "Users";          // utente del database
-$pass = "Venita3#";              // password MySQL
-$db   = "ina5_vallasciani";        // nome del tuo database
-
-$conn = mysqli_connect($host, $user, $pass, $db)
-    or die("Errore connessione: " . mysqli_connect_error());
-?>

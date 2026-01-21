@@ -4,7 +4,7 @@ $dbname = "my_christianvallasciani";
 $user = "4063703";       
 $pass = "EtrU3TgCEXkE";
 
-$conn = mysqli_connect($host, $user, $password, $database);
+$conn = mysqli_connect($host, $user, $pass, $dbname);
 
 if (!$conn) {
     die('Connessione al database fallita: ' . mysqli_connect_error());

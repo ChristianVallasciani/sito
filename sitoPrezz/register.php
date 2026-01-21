@@ -36,12 +36,12 @@
         $confirm_password = trim($_POST['confirm_password'] ?? '');
         
         if (empty($name) || empty($surname) || empty($email) || empty($password) || empty($confirm_password)) {
-          echo "<div class='container mt-3'><div class='alret alert-danger text-center'>Devono essere riempiti tutti i campi</div></div>";
+          echo "<div class='container mt-3'><div class='alert alert-danger text-center'>Devono essere riempiti tutti i campi</div></div>";
           exit;
         }
 
         if(!preg_match("/^[A-Za-z]+$/", $name) || !preg_match("/^[A-Za-z]+$/", $surname)) {
-          echo "<div class='container mt-3'><div class='alret alert-danger text-center'>Nome e cognome devono contenere solo lettere.</div></div>";
+          echo "<div class='container mt-3'><div class='alert alert-danger text-center'>Nome e cognome devono contenere solo lettere.</div></div>";
           exit;
         }
 
@@ -50,22 +50,21 @@
           exit;
         }
         
-        if (mysqli_num_rows(mysqli_query($db, "SELECT * FROM users WHERE email = '$email'")) != 0) {
+        $check_query = "SELECT * FROM users WHERE email = '$email'";
+        $check_result = mysqli_query($conn, $check_query);
+        if (mysqli_num_rows($check_result) != 0) {
             echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>L'email è già registrata.</div>";
         	exit;
         }
 
         $password_hash = password_hash($password, PASSWORD_DEFAULT);
         
-        
-  
-        $query="INSERT INTO Users(Nome,surname,Email,password,Ruolo) VALUES ($name,$surname,$email,$password,$roles)"
-      
-        mysqli_query($db, "INSERT INTO users (nome, email, password, ruolo) VALUES ('$name', '$email', '$password_hash', 0)");
+        $insert_query = "INSERT INTO users (nome, surname, email, password, ruolo) VALUES ('$name', '$surname', '$email', '$password_hash', 0)";
+        mysqli_query($conn, $insert_query);
 
-        echo "<div class='alert alert-success mx-auto my-3 fixed-top' style='max-width: 600px;'>Benvenuto $username! I tuoi dati sono stati salvati correttamente!</div>";
+        echo "<div class='alert alert-success mx-auto my-3 fixed-top' style='max-width: 600px;'>Benvenuto $name! I tuoi dati sono stati salvati correttamente!</div>";
     
-         mysqli_close($db);
+         mysqli_close($conn);
 
       }
       ?>
@@ -77,7 +76,7 @@
               <div class="card-body p-4">
                 <h3 class="text-center mb-4">Crea il tuo account</h3>
 
-                <form method="POST" action="register.php" onsubmit="return chekregister()">
+                <form method="POST" action="register.php" onsubmit="return checkregister()">
                   <div class="mb-3">
                     <label for="name" class="form-label">Nome</label>
                     <input type="text" class="form-control" id="name" name="name" placeholder="Inserisci il tuo nome" required>
@@ -135,6 +134,8 @@
           alert("Nome e cognome devono contenere solo lettere.");
           return false;
         }
+        
+        return true;
       }
     </script>
 

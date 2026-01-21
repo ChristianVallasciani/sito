@@ -1,10 +1,14 @@
 <?php
-$db = mysqli_connect("localhost", "root", "", "my_pietroni");
+include "connessione.php";
 
+if (!isset($_COOKIE['email'])) {
+    header("Location: login.php");
+    exit;
+}
 
 $email = $_COOKIE['email'];
 
-$query = mysqli_query($db, "SELECT * FROM users WHERE email = '$email'");
+$query = mysqli_query($conn, "SELECT * FROM utenti WHERE email = '$email'");
 
 $utente = mysqli_fetch_assoc($query);
 ?>
@@ -17,7 +21,7 @@ $utente = mysqli_fetch_assoc($query);
         <title>Profilo</title>
     </head>
     <body>
-        <?php include "header.php"; ?>
+        <?php include "header.html"; ?>
         <div class="row row-cols-1 row-cols-md-3 mt-3 me-0 p-5">
             <div class="m-auto">
                 <div class="card text-center">
@@ -38,13 +42,13 @@ $utente = mysqli_fetch_assoc($query);
                         <h6>Indirizzi associati:</h6>
                         <ul class="list-unstyled">
                             <?php 
-                                $risultato = mysqli_query($db, "SELECT * FROM indirizzi WHERE email = '$email'");
+                                $risultato = mysqli_query($conn, "SELECT * FROM indirizzi WHERE utente_email = '$email'");
                                 
                                 if(mysqli_num_rows($risultato) > 0)
                                 {
                                     while($riga = mysqli_fetch_assoc($risultato)) {
                                         echo "<li>";
-                                        echo "Via {$riga['via']} {$riga['civico']}, {$riga['citta']}, {$riga['nazione']}, {$riga['cap']}, Priorità: {$riga['priorita']}";
+                                        echo "Via {$riga['via']}, {$riga['citta']}, {$riga['paese']}, {$riga['cap']}, Provincia: {$riga['provincia']}";
                                         echo "</li>";
                                     }
                                 }
@@ -54,6 +58,7 @@ $utente = mysqli_fetch_assoc($query);
                                 }
                             ?>
                         </ul>
+                        <a href="indirizzo.php" class="btn btn-outline-primary btn-sm mb-3">Aggiungi indirizzo</a>
                         <?php 
                             if($utente['tipo'] == 1) 
                             {

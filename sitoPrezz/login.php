@@ -31,19 +31,20 @@ include "connessione.php";
   if ($_SERVER["REQUEST_METHOD"] == "POST") {
       $email = trim($_POST['email'] ?? '');
       $password = trim($_POST['password'] ?? '');
+      $ricordami = isset($_POST['remember']);
    
-      $query = "SELECT * FROM utenti WHERE email='$email' AND password='$password'";
-      if (mysqli_num_rows($query) == 0) {
+      $query = "SELECT * FROM utenti WHERE email='$email'";
+      $result = mysqli_query($conn, $query);
+      if (!$result || mysqli_num_rows($result) == 0) {
         echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>Errore: utente non trovato.</div>";
         exit;
     }
-    $utenteTrovato = mysqli_fetch_assoc($query);
+    $utenteTrovato = mysqli_fetch_assoc($result);
 
     if (password_verify($password, $utenteTrovato['password'])) {
 
-        if ($ricordami) {
-            setcookie("email", $email, time() + 86400 * 30, "/");
-        }
+    $cookieDuration = $ricordami ? time() + 86400 * 30 : 0; // session cookie se non ricordami
+    setcookie("email", $email, $cookieDuration, "/");
 
         echo "<div class='alert alert-success mx-auto my-3 fixed-top' style='max-width: 600px;'>Benvenuto {$utenteTrovato['nome']}! Login effettuato correttamente.</div>";
     } else {
@@ -76,7 +77,7 @@ include "connessione.php";
                   </div>
 
                   <div class="d-grid">
-                    <button type="submit" class=b"tn btn-primary">Accedi</button>
+                    <button type="submit" class="btn btn-primary">Accedi</button>
                   </div>
                 </form>
 
@@ -97,7 +98,7 @@ include "connessione.php";
     <script>
       function chekregister(){
         const email = document.getElementById("email").value;
-        const pwd =  documet.getElementById("password").value;
+        const pwd = document.getElementById("password").value;
 
       }
     </script>
