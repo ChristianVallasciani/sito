@@ -1,82 +1,19 @@
-<?php
-$registrationError = '';
-$registrationSuccess = '';
-$formData = [
-  'name' => '',
-  'surname' => '',
-  'email' => ''
-];
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $formData['name'] = trim($_POST['name'] ?? '');
-  $formData['surname'] = trim($_POST['surname'] ?? '');
-  $formData['email'] = trim($_POST['email'] ?? '');
-  $password = trim($_POST['password'] ?? '');
-  $confirmPassword = trim($_POST['confirm_password'] ?? '');
-
-  if (in_array('', $formData, true) || $password === '' || $confirmPassword === '') {
-    $registrationError = 'Compila tutti i campi per continuare.';
-  } elseif (!preg_match('/^[A-Za-z]+$/', $formData['name']) || !preg_match('/^[A-Za-z]+$/', $formData['surname'])) {
-    $registrationError = 'Nome e cognome possono contenere solo lettere.';
-  } elseif (!filter_var($formData['email'], FILTER_VALIDATE_EMAIL)) {
-    $registrationError = 'Inserisci un indirizzo email valido.';
-  } elseif ($password !== $confirmPassword) {
-    $registrationError = 'Le password non coincidono.';
-  } elseif (strlen($password) < 8) {
-    $registrationError = 'La password deve contenere almeno 8 caratteri.';
-  } else {
-    require_once 'connessione.php';
-
-    $nomeEsc = mysqli_real_escape_string($conn, $formData['name']);
-    $cognomeEsc = mysqli_real_escape_string($conn, $formData['surname']);
-    $emailEsc = mysqli_real_escape_string($conn, $formData['email']);
-
-    // Fase 1: costruzione query SELECT per verificare esistenza email
-    $queryCheck = "SELECT id FROM utenti WHERE email = '$emailEsc' LIMIT 1";
-    // Fase 2: esecuzione query
-    $risultatoCheck = mysqli_query($conn, $queryCheck)
-      or die('Errore SELECT: ' . mysqli_error($conn) . ' ' . mysqli_errno($conn));
-
-    if (mysqli_num_rows($risultatoCheck) > 0) {
-      $registrationError = 'Esiste gia un account associato a questa email.';
-    } else {
-      // Fase 1: costruzione query INSERT
-      $passwordHash = password_hash($password, PASSWORD_DEFAULT);
-      $passwordEsc = mysqli_real_escape_string($conn, $passwordHash);
-      $queryInsert = "INSERT INTO utenti (nome, cognome, email, password) VALUES ('$nomeEsc', '$cognomeEsc', '$emailEsc', '$passwordEsc')";
-      // Fase 2: invio comando SQL
-      mysqli_query($conn, $queryInsert)
-        or die('Errore INSERT: ' . mysqli_error($conn) . ' ' . mysqli_errno($conn));
-
-      // Fase 3: valutazione esito
-      if (mysqli_affected_rows($conn) === 1) {
-        $registrationSuccess = 'Registrazione completata! Ora puoi accedere.';
-        $formData = ['name' => '', 'surname' => '', 'email' => ''];
-      } else {
-        $registrationError = 'Si e verificato un errore durante la registrazione. Riprova piu tardi.';
-      }
-    }
-
-    mysqli_free_result($risultatoCheck);
-    mysqli_close($conn)
-      or die('Errore chiusura: ' . mysqli_error($conn) . ' ' . mysqli_errno($conn));
-  }
-}
-?>
 <!doctype html>
 <html lang="it">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Registrazione | PREZZ</title>
+    <title>Shop PREZZ</title>
     <link rel="icon" href="assets/img/logo.png" type="image/png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        
         body {
             display: flex;
             flex-direction: column;
             min-height: 100vh;
         }
+        
         main {
             flex: 1 0 auto;
         }
@@ -86,55 +23,84 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <body class="bg-light">
 
     <?php include 'header.html'; ?>
+ 
 
     <main>
+      <?php
+      include "connessione.php";
+      if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $name = trim($_POST['name'] ?? '');
+        $surname = trim($_POST['surname'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+        $password = trim($_POST['password'] ?? '');
+        $confirm_password = trim($_POST['confirm_password'] ?? '');
+        
+        if (empty($name) || empty($surname) || empty($email) || empty($password) || empty($confirm_password)) {
+          echo "<div class='container mt-3'><div class='alret alert-danger text-center'>Devono essere riempiti tutti i campi</div></div>";
+          exit;
+        }
+
+        if(!preg_match("/^[A-Za-z]+$/", $name) || !preg_match("/^[A-Za-z]+$/", $surname)) {
+          echo "<div class='container mt-3'><div class='alret alert-danger text-center'>Nome e cognome devono contenere solo lettere.</div></div>";
+          exit;
+        }
+
+        if ($password !== $confirm_password) {
+          echo "<div class='container mt-3'><div class='alert alert-danger text-center'>Le password non coincidono.</div></div>";
+          exit;
+        }
+        
+        if (mysqli_num_rows(mysqli_query($db, "SELECT * FROM users WHERE email = '$email'")) != 0) {
+            echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>L'email è già registrata.</div>";
+        	exit;
+        }
+
+        $password_hash = password_hash($password, PASSWORD_DEFAULT);
+        
+        
+  
+        $query="INSERT INTO Users(Nome,surname,Email,password,Ruolo) VALUES ($name,$surname,$email,$password,$roles)"
+      
+        mysqli_query($db, "INSERT INTO users (nome, email, password, ruolo) VALUES ('$name', '$email', '$password_hash', 0)");
+
+        echo "<div class='alert alert-success mx-auto my-3 fixed-top' style='max-width: 600px;'>Benvenuto $username! I tuoi dati sono stati salvati correttamente!</div>";
+    
+         mysqli_close($db);
+
+      }
+      ?>
+
       <div class="container my-5">
-        <div class="row justify-content-center">
-          <div class="col-md-6">
-            <?php if ($registrationError): ?>
-              <div class="alert alert-danger text-center" role="alert">
-                <?php echo htmlspecialchars($registrationError, ENT_QUOTES, 'UTF-8'); ?>
-              </div>
-            <?php endif; ?>
-
-            <?php if ($registrationSuccess): ?>
-              <div class="alert alert-success text-center" role="alert">
-                <?php echo htmlspecialchars($registrationSuccess, ENT_QUOTES, 'UTF-8'); ?>
-              </div>
-            <?php endif; ?>
-          </div>
-        </div>
-
         <div class="row justify-content-center">
           <div class="col-md-6">
             <div class="card shadow-sm border-0">
               <div class="card-body p-4">
                 <h3 class="text-center mb-4">Crea il tuo account</h3>
 
-                <form method="POST" action="register.php" onsubmit="return validateRegister()">
+                <form method="POST" action="register.php" onsubmit="return chekregister()">
                   <div class="mb-3">
                     <label for="name" class="form-label">Nome</label>
-                    <input type="text" class="form-control" id="name" name="name" placeholder="Inserisci il tuo nome" value="<?php echo htmlspecialchars($formData['name'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                    <input type="text" class="form-control" id="name" name="name" placeholder="Inserisci il tuo nome" required>
                   </div>
 
                   <div class="mb-3">
                     <label for="surname" class="form-label">Cognome</label>
-                    <input type="text" class="form-control" id="surname" name="surname" placeholder="Inserisci il tuo cognome" value="<?php echo htmlspecialchars($formData['surname'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                    <input type="text" class="form-control" id="surname" name="surname" placeholder="Inserisci il tuo cognome" required>
                   </div>
 
                   <div class="mb-3">
                     <label for="email" class="form-label">Indirizzo Email</label>
-                    <input type="email" class="form-control" id="email" name="email" placeholder="nome@email.com" value="<?php echo htmlspecialchars($formData['email'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                    <input type="email" class="form-control" id="email" name="email" placeholder="nome@email.com" required>
                   </div>
 
                   <div class="mb-3">
                     <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="password" name="password" placeholder="Inserisci la tua password" minlength="8" required>
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Inserisci la tua password" required>
                   </div>
 
                   <div class="mb-3">
                     <label for="confirm_password" class="form-label">Conferma la password</label>
-                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Ripeti la password" minlength="8" required>
+                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Ripeti la password" required>
                   </div>
 
                   <div class="d-grid mt-4">
@@ -151,25 +117,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php include 'footer.html'; ?>
 
     <script>
-      function validateRegister() {
-        const name = document.getElementById('name').value.trim();
-        const surname = document.getElementById('surname').value.trim();
-        const pw1 = document.getElementById('password').value;
-        const pw2 = document.getElementById('confirm_password').value;
+      function checkregister(){
+        const pw1 = document.getElementById("password").value;
+        const pw2 = document.getElementById("confirm_password").value;
+        
+        const name = document.getElementById("name").value;
+        const surname = document.getElementById("surname").value;
 
-        const onlyLetters = /^[A-Za-z]+$/.test(name) && /^[A-Za-z]+$/.test(surname);
+        const soloLettere = /^[A-Za-z]+$/.test(name) && /^[A-Za-z]+$/.test(surname);
 
-        if (!onlyLetters) {
-          alert('Nome e cognome possono contenere solo lettere.');
+        if (pw1 != pw2 || pw1.length < 8 ){
+          alert("Le password non corrispondono o caratteri non sufficienti");
           return false;
         }
-
-        if (pw1 !== pw2 || pw1.length < 8) {
-          alert('Le password devono coincidere e contenere almeno 8 caratteri.');
+        
+        if (!soloLettere) {
+          alert("Nome e cognome devono contenere solo lettere.");
           return false;
         }
-
-        return true;
       }
     </script>
 

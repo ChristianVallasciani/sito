@@ -1,0 +1,74 @@
+<?php
+$db = mysqli_connect("localhost", "root", "", "my_pietroni");
+
+
+$email = $_COOKIE['email'];
+
+$query = mysqli_query($db, "SELECT * FROM users WHERE email = '$email'");
+
+$utente = mysqli_fetch_assoc($query);
+?>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+        <title>Profilo</title>
+    </head>
+    <body>
+        <?php include "header.php"; ?>
+        <div class="row row-cols-1 row-cols-md-3 mt-3 me-0 p-5">
+            <div class="m-auto">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Il tuo profilo</h5>
+                        <p class="mb-2">
+                            <strong>Username:</strong><br>
+                            <?php echo $utente['nome']; ?>
+                        </p>
+                        <p class="mb-2">
+                            <strong>Email:</strong><br>
+                            <?php echo $utente['email']; ?>
+                        </p>
+                        <p class="mb-3">
+                            <strong>Tipo utente:</strong><br>
+                            <?php echo $utente['tipo'] == 0 ? 'Utente' : 'Admin'; ?>
+                        </p>
+                        <h6>Indirizzi associati:</h6>
+                        <ul class="list-unstyled">
+                            <?php 
+                                $risultato = mysqli_query($db, "SELECT * FROM indirizzi WHERE email = '$email'");
+                                
+                                if(mysqli_num_rows($risultato) > 0)
+                                {
+                                    while($riga = mysqli_fetch_assoc($risultato)) {
+                                        echo "<li>";
+                                        echo "Via {$riga['via']} {$riga['civico']}, {$riga['citta']}, {$riga['nazione']}, {$riga['cap']}, Priorità: {$riga['priorita']}";
+                                        echo "</li>";
+                                    }
+                                }
+                                else
+                                {
+                                    echo "<li>Nessun indirizzo aggiunto.</li>";
+                                }
+                            ?>
+                        </ul>
+                        <?php 
+                            if($utente['tipo'] == 1) 
+                            {
+                                echo "<a href='admin.php' class='btn btn-primary btn-sm'>Pannello Admin</a>";
+                            }
+                        ?>
+                        <a href="logout.php" class="btn btn-danger btn-sm">Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div style="position: absolute; bottom: 0; width: 100vw;">
+            <?php include "footer.html"; ?>
+        </div>
+        <script src="https://kit.fontawesome.com/2459a8ac1f.js" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    </body>
+</html>

@@ -1,59 +1,9 @@
-<?php
-session_start();
-
-$loginError = '';
-$loginSuccess = '';
-$loginForm = ['email' => ''];
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $loginForm['email'] = trim($_POST['email'] ?? '');
-  $password = trim($_POST['password'] ?? '');
-
-  if ($loginForm['email'] === '' || $password === '') {
-    $loginError = 'Inserisci email e password.';
-  } elseif (!filter_var($loginForm['email'], FILTER_VALIDATE_EMAIL)) {
-    $loginError = 'Formato email non valido.';
-  } else {
-    require_once 'connessione.php';
-
-    $emailEsc = mysqli_real_escape_string($conn, $loginForm['email']);
-
-    // Fase 1: costruzione query SELECT
-    $query = "SELECT id, nome, cognome, email, password FROM utenti WHERE email = '$emailEsc' LIMIT 1";
-    // Fase 2: esecuzione query
-    $risultato = mysqli_query($conn, $query)
-      or die('Errore SELECT: ' . mysqli_error($conn) . ' ' . mysqli_errno($conn));
-
-    if (mysqli_num_rows($risultato) === 0) {
-      $loginError = 'Non esiste alcun account associato a questa email. Registrati prima di accedere.';
-    } else {
-      $utente = mysqli_fetch_assoc($risultato);
-
-      if ($utente && password_verify($password, $utente['password'])) {
-        $_SESSION['user'] = [
-          'id' => $utente['id'],
-          'nome' => $utente['nome'],
-          'cognome' => $utente['cognome'],
-          'email' => $utente['email']
-        ];
-        $loginSuccess = 'Bentornato ' . htmlspecialchars($utente['nome'] . ' ' . $utente['cognome'], ENT_QUOTES, 'UTF-8') . '!';
-      } else {
-        $loginError = 'Password errata. Riprova.';
-      }
-    }
-
-    mysqli_free_result($risultato);
-    mysqli_close($conn)
-      or die('Errore chiusura: ' . mysqli_error($conn) . ' ' . mysqli_errno($conn));
-  }
-}
-?>
 <!doctype html>
 <html lang="it">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login | PREZZ</title>
+    <title>Shop PREZZ</title>
     <link rel="icon" href="assets/img/logo.png" type="image/png">
     <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css' rel='stylesheet'>
     <style>
@@ -62,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flex-direction: column;
             min-height: 100vh;
         }
+        
         main {
             flex: 1 0 auto;
         }
@@ -73,33 +24,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php include 'header.html'; ?>
 
     <main>
+<?php
+include "connessione.php";
+
+
+  if ($_SERVER["REQUEST_METHOD"] == "POST") {
+      $email = trim($_POST['email'] ?? '');
+      $password = trim($_POST['password'] ?? '');
+   
+      $query = "SELECT * FROM utenti WHERE email='$email' AND password='$password'";
+      if (mysqli_num_rows($query) == 0) {
+        echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>Errore: utente non trovato.</div>";
+        exit;
+    }
+    $utenteTrovato = mysqli_fetch_assoc($query);
+
+    if (password_verify($password, $utenteTrovato['password'])) {
+
+        if ($ricordami) {
+            setcookie("email", $email, time() + 86400 * 30, "/");
+        }
+
+        echo "<div class='alert alert-success mx-auto my-3 fixed-top' style='max-width: 600px;'>Benvenuto {$utenteTrovato['nome']}! Login effettuato correttamente.</div>";
+    } else {
+        echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>Errore: password errata.</div>";
+  }
+}
+?>
+
       <div class="container my-5">
-        <div class="row justify-content-center">
-          <div class="col-md-6">
-            <?php if ($loginError): ?>
-              <div class="alert alert-danger text-center" role="alert">
-                <?php echo htmlspecialchars($loginError, ENT_QUOTES, 'UTF-8'); ?>
-              </div>
-            <?php endif; ?>
-
-            <?php if ($loginSuccess): ?>
-              <div class="alert alert-success text-center" role="alert">
-                <?php echo $loginSuccess; ?>
-              </div>
-            <?php endif; ?>
-          </div>
-        </div>
-
         <div class="row justify-content-center">
           <div class="col-md-6">
             <div class="card shadow-sm border-0">
               <div class="card-body p-4">
                 <h3 class="text-center mb-4">Accedi al tuo account</h3>
 
-                <form action="login.php" method="POST">
+                <form action="login.php" method="POST" onsubmit="return chekregister()">
                   <div class="mb-3">
                     <label for="email" class="form-label">Indirizzo Email</label>
-                    <input type="email" class="form-control" id="email" name="email" placeholder="nome@email.com" value="<?php echo htmlspecialchars($loginForm['email'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                    <input type="email" class="form-control" id="email" name="email" placeholder="nome@email.com" required>
                   </div>
 
                   <div class="mb-3">
@@ -113,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   </div>
 
                   <div class="d-grid">
-                    <button type="submit" class="btn btn-primary">Accedi</button>
+                    <button type="submit" class=b"tn btn-primary">Accedi</button>
                   </div>
                 </form>
 
@@ -131,5 +94,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <?php include 'footer.html'; ?>
 
+    <script>
+      function chekregister(){
+        const email = document.getElementById("email").value;
+        const pwd =  documet.getElementById("password").value;
+
+      }
+    </script>
   </body>
 </html>
