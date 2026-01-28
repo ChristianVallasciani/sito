@@ -10,7 +10,7 @@ $email = $_COOKIE['email'];
 
 
 
-$query = mysqli_query($conn, "SELECT * FROM users WHERE email = '$email'");
+$query = mysqli_query($conn, "SELECT * FROM utenti WHERE email = '$email'");
 
 $utente = mysqli_fetch_assoc($query);
 ?>
@@ -42,24 +42,40 @@ $utente = mysqli_fetch_assoc($query);
                             <?php echo isset($utente['ruolo']) && (int)$utente['ruolo'] === 1 ? 'Admin' : 'Utente'; ?>
                         </p>
                         <h6>Indirizzi associati:</h6>
-                        <ul class="list-unstyled">
+                        <div class="list-group mb-3">
                             <?php 
+                                // Gestione eliminazione
+                                if(isset($_GET['elimina'])) {
+                                    $id_elimina = $_GET['elimina'];
+                                    mysqli_query($conn, "DELETE FROM indirizzi WHERE id = '$id_elimina' AND utente_email = '$email'");
+                                    echo "<div class='alert alert-success'>Indirizzo eliminato con successo.</div>";
+                                }
+                                
                                 $risultato = mysqli_query($conn, "SELECT * FROM indirizzi WHERE utente_email = '$email'");
                                 
                                 if(mysqli_num_rows($risultato) > 0)
                                 {
                                     while($riga = mysqli_fetch_assoc($risultato)) {
-                                        echo "<li>";
-                                        echo "Via {$riga['via']}, {$riga['citta']}, {$riga['paese']}, {$riga['cap']}, Provincia: {$riga['provincia']}";
-                                        echo "</li>";
+                                        echo "<div class='list-group-item d-flex justify-content-between align-items-center'>";
+                                        echo "<div>";
+                                        echo "<strong>Via {$riga['via']}</strong><br>";
+                                        echo "{$riga['citta']}, {$riga['cap']}";
+                                        if(!empty($riga['provincia'])) echo " ({$riga['provincia']})";
+                                        echo "<br>{$riga['paese']}";
+                                        echo "</div>";
+                                        echo "<div>";
+                                        echo "<a href='indirizzo.php?modifica={$riga['id']}' class='btn btn-sm btn-warning me-1'>Modifica</a>";
+                                        echo "<a href='profilo.php?elimina={$riga['id']}' class='btn btn-sm btn-danger' onclick='return confirm(\"Sei sicuro di voler eliminare questo indirizzo?\")'>Elimina</a>";
+                                        echo "</div>";
+                                        echo "</div>";
                                     }
                                 }
                                 else
                                 {
-                                    echo "<li>Nessun indirizzo aggiunto.</li>";
+                                    echo "<div class='list-group-item text-center'>Nessun indirizzo aggiunto.</div>";
                                 }
                             ?>
-                        </ul>
+                        </div>
                         <a href="indirizzo.php" class="btn btn-outline-primary btn-sm mb-3">Aggiungi indirizzo</a>
                         <?php 
                             if(isset($utente['ruolo']) && (int)$utente['ruolo'] === 1) 
