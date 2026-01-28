@@ -17,7 +17,15 @@
 
         <!-- BUTTON -->
         <div class="col-md-3 text-center text-md-end">
-            <a href="login.php" class="btn btn-primary px-4">Log In</a>
+            <?php if (isset($_COOKIE['email'])): ?>
+                <div class="d-flex justify-content-center justify-content-md-end align-items-center gap-2">
+                    <span class="text-muted">Ciao, <?php echo explode('@', $_COOKIE['email'])[0]; ?></span>
+                    <a href="profilo.php" class="btn btn-primary btn-sm px-3">Profilo</a>
+                    <a href="logout.php" class="btn btn-outline-danger btn-sm px-3">Logout</a>
+                </div>
+            <?php else: ?>
+                <a href="login.php" class="btn btn-primary px-4">Log In</a>
+            <?php endif; ?>
         </div>
     </div>
 </div>

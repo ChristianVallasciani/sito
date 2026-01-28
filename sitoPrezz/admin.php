@@ -37,7 +37,7 @@ $users = mysqli_query($conn, "SELECT * FROM utenti");
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     </head>
     <body>
-        <?php include "header.html"; ?>
+        <?php include "header.php"; ?>
         <div class="container mt-5">
             <h3 class="mb-4">Pannello Admin</h3>
             <table class="table table-bordered text-center">

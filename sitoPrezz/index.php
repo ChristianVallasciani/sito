@@ -9,7 +9,7 @@
   </head>
 
   <body>
-    <?php include 'header.html'; ?>
+    <?php include 'header.php'; ?>
       <!-- SEZIONE CARRELLO -->
       <div class="container-fluid d-flex justify-content-center justify-content-md-end py-3">
         <div class="position-relative">

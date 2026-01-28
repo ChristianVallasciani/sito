@@ -8,7 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
   </head>
   <body class="bg-light">
-    <?php include 'header.html'; ?>
+    <?php include 'header.php'; ?>
 
     <main class="container my-5">
       <?php

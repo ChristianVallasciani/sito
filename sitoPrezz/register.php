@@ -22,7 +22,7 @@
 
   <body class="bg-light">
 
-    <?php include 'header.html'; ?>
+    <?php include 'header.php'; ?>
  
 
     <main>

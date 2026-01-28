@@ -23,7 +23,7 @@ $utente = mysqli_fetch_assoc($query);
         <title>Profilo</title>
     </head>
     <body>
-        <?php include "header.html"; ?>
+        <?php include "header.php"; ?>
         <div class="row row-cols-1 row-cols-md-3 mt-3 me-0 p-5">
             <div class="m-auto">
                 <div class="card text-center">
