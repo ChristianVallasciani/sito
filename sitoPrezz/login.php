@@ -46,7 +46,8 @@ include "connessione.php";
     $cookieDuration = $ricordami ? time() + 86400 * 30 : 0; // session cookie se non ricordami
     setcookie("email", $email, $cookieDuration, "/");
 
-        echo "<div class='alert alert-success mx-auto my-3 fixed-top' style='max-width: 600px;'>Benvenuto {$utenteTrovato['nome']}! Login effettuato correttamente.</div>";
+        header("Location: profilo.php");
+        exit;
     } else {
         echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>Errore: password errata.</div>";
   }

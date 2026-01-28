@@ -50,7 +50,7 @@
           exit;
         }
         
-        $check_query = "SELECT * FROM users WHERE email = '$email'";
+        $check_query = "SELECT * FROM utenti WHERE email = '$email'";
         $check_result = mysqli_query($conn, $check_query);
         if (mysqli_num_rows($check_result) != 0) {
             echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>L'email è già registrata.</div>";
@@ -59,7 +59,7 @@
 
         $password_hash = password_hash($password, PASSWORD_DEFAULT);
         
-        $insert_query = "INSERT INTO users (nome, surname, email, password, ruolo) VALUES ('$name', '$surname', '$email', '$password_hash', 0)";
+        $insert_query = "INSERT INTO utenti (nome, surname, email, password, ruolo) VALUES ('$name', '$surname', '$email', '$password_hash', 0)";
         mysqli_query($conn, $insert_query);
 
         echo "<div class='alert alert-success mx-auto my-3 fixed-top' style='max-width: 600px;'>Benvenuto $name! I tuoi dati sono stati salvati correttamente!</div>";
