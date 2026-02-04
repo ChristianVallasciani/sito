@@ -50,8 +50,11 @@
           exit;
         }
         
-        $check_query = "SELECT * FROM utenti WHERE email = '$email'";
-        $check_result = mysqli_query($conn, $check_query);
+        $check_query = "SELECT * FROM utenti WHERE email = ?";
+        $check_stmt = mysqli_prepare($conn, $check_query);
+        mysqli_stmt_bind_param($check_stmt, "s", $email);
+        mysqli_stmt_execute($check_stmt);
+        $check_result = mysqli_stmt_get_result($check_stmt);
         if (mysqli_num_rows($check_result) != 0) {
             echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>L'email è già registrata.</div>";
         	exit;
@@ -59,12 +62,16 @@
 
         $password_hash = password_hash($password, PASSWORD_DEFAULT);
         
-        $insert_query = "INSERT INTO utenti (nome, surname, email, password, ruolo) VALUES ('$name', '$surname', '$email', '$password_hash', 0)";
-        mysqli_query($conn, $insert_query);
+        $insert_query = "INSERT INTO utenti (nome, surname, email, password, ruolo) VALUES (?, ?, ?, ?, 0)";
+        $insert_stmt = mysqli_prepare($conn, $insert_query);
+        mysqli_stmt_bind_param($insert_stmt, "ssss", $name, $surname, $email, $password_hash);
+        mysqli_stmt_execute($insert_stmt);
 
         echo "<div class='alert alert-success mx-auto my-3 fixed-top' style='max-width: 600px;'>Benvenuto $name! I tuoi dati sono stati salvati correttamente!</div>";
     
          mysqli_close($conn);
+         header('Location: profilo.php');
+exit;
 
       }
       ?>
@@ -94,7 +101,7 @@
 
                   <div class="mb-3">
                     <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="password" name="password" placeholder="Inserisci la tua password" required>
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Inserisci la tua password" required minlength="8">
                   </div>
 
                   <div class="mb-3">
@@ -123,10 +130,20 @@
         const name = document.getElementById("name").value;
         const surname = document.getElementById("surname").value;
 
+        if (!name || !surname || !pw1 || !pw2) {
+          alert("Tutti i campi sono obbligatori");
+          return false;
+        }
+
         const soloLettere = /^[A-Za-z]+$/.test(name) && /^[A-Za-z]+$/.test(surname);
 
-        if (pw1 != pw2 || pw1.length < 8 ){
-          alert("Le password non corrispondono o caratteri non sufficienti");
+        if (pw1 !== pw2) {
+          alert("Le password non corrispondono");
+          return false;
+        }
+        
+        if (pw1.length < 8) {
+          alert("La password deve avere almeno 8 caratteri");
           return false;
         }
         

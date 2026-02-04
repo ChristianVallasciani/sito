@@ -7,27 +7,40 @@ if (!isset($_COOKIE['email'])) {
 }
 
 $email = $_COOKIE['email'];
-$query = mysqli_query($conn, "SELECT * FROM utenti WHERE email = '$email'");
-$utente = $query ? mysqli_fetch_assoc($query) : null;
+$query = "SELECT * FROM utenti WHERE email = ?";
+$stmt = mysqli_prepare($conn, $query);
+mysqli_stmt_bind_param($stmt, "s", $email);
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
+$utente = $result ? mysqli_fetch_assoc($result) : null;
 
 if (!$utente || (int)$utente['ruolo'] !== 1) {
     header("Location: index.php");
     exit;
 }
 
-if (isset($_POST['cambia'])) {
-    $email = $_POST['email'];
+if (isset($_POST['cambia']) && isset($_POST['email']) && isset($_POST['ruolo'])) {
+    $email_change = $_POST['email'];
     $nuovo_ruolo = (int)$_POST['ruolo'];
-
-    mysqli_query($conn, "UPDATE utenti SET ruolo = $nuovo_ruolo WHERE email = '$email'");
+    
+    if ($nuovo_ruolo === 0 || $nuovo_ruolo === 1) {
+        $update_query = "UPDATE utenti SET ruolo = ? WHERE email = ?";
+        $update_stmt = mysqli_prepare($conn, $update_query);
+        mysqli_stmt_bind_param($update_stmt, "is", $nuovo_ruolo, $email_change);
+        mysqli_stmt_execute($update_stmt);
+    }
 }
 
-if (isset($_POST['cancella'])) {
-    $email = $_POST['email'];
-    mysqli_query($conn, "DELETE FROM utenti WHERE email = '$email'");
+if (isset($_POST['cancella']) && isset($_POST['email'])) {
+    $email_delete = $_POST['email'];
+    $delete_query = "DELETE FROM utenti WHERE email = ?";
+    $delete_stmt = mysqli_prepare($conn, $delete_query);
+    mysqli_stmt_bind_param($delete_stmt, "s", $email_delete);
+    mysqli_stmt_execute($delete_stmt);
 }
 
-$users = mysqli_query($conn, "SELECT * FROM utenti");
+$users_query = "SELECT * FROM utenti";
+$users = mysqli_query($conn, $users_query);
 ?>
 <!DOCTYPE html>
 <html lang="en">

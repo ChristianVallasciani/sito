@@ -32,9 +32,18 @@ include "connessione.php";
       $email = trim($_POST['email'] ?? '');
       $password = trim($_POST['password'] ?? '');
       $ricordami = isset($_POST['remember']);
+      
+      if (empty($email) || empty($password)) {
+        echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>Errore: email e password obbligatorie.</div>";
+        exit;
+      }
    
-      $query = "SELECT * FROM utenti WHERE email='$email'";
-      $result = mysqli_query($conn, $query);
+      $query = "SELECT * FROM utenti WHERE email=?";
+      $stmt = mysqli_prepare($conn, $query);
+      mysqli_stmt_bind_param($stmt, "s", $email);
+      mysqli_stmt_execute($stmt);
+      $result = mysqli_stmt_get_result($stmt);
+      
       if (!$result || mysqli_num_rows($result) == 0) {
         echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>Errore: utente non trovato.</div>";
         exit;
@@ -43,14 +52,15 @@ include "connessione.php";
 
     if (password_verify($password, $utenteTrovato['password'])) {
 
-    $cookieDuration = $ricordami ? time() + 86400 * 30 : 0; // session cookie se non ricordami
+    $cookieDuration = $ricordami ? time() + 86400 * 30 : 0;
     setcookie("email", $email, $cookieDuration, "/");
 
-        header("Location: profilo.php");
-        exit;
+        echo "<div class='alert alert-success mx-auto my-3 fixed-top' style='max-width: 600px;'>Benvenuto {$utenteTrovato['nome']}! Login effettuato correttamente.</div>";
     } else {
         echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>Errore: password errata.</div>";
   }
+  header('Location: profilo.php');
+exit;
 }
 ?>
 
@@ -61,7 +71,7 @@ include "connessione.php";
               <div class="card-body p-4">
                 <h3 class="text-center mb-4">Accedi al tuo account</h3>
 
-                <form action="login.php" method="POST" onsubmit="return chekregister()">
+                <form action="login.php" method="POST" onsubmit="return checkLogin()">
                   <div class="mb-3">
                     <label for="email" class="form-label">Indirizzo Email</label>
                     <input type="email" class="form-control" id="email" name="email" placeholder="nome@email.com" required>
@@ -69,7 +79,7 @@ include "connessione.php";
 
                   <div class="mb-3">
                     <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="password" name="password" placeholder="Inserisci la tua password" required>
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Inserisci la tua password" required minlength="8">
                   </div>
 
                   <div class="mb-3 form-check">
@@ -97,10 +107,21 @@ include "connessione.php";
     <?php include 'footer.html'; ?>
 
     <script>
-      function chekregister(){
+      function checkLogin(){
         const email = document.getElementById("email").value;
         const pwd = document.getElementById("password").value;
-
+        
+        if (!email || !pwd) {
+          alert("Email e password sono obbligatorie");
+          return false;
+        }
+        
+        if (pwd.length < 8) {
+          alert("La password deve avere almeno 8 caratteri");
+          return false;
+        }
+        
+        return true;
       }
     </script>
   </body>

@@ -8,11 +8,12 @@ if (!isset($_COOKIE['email'])) {
 
 $email = $_COOKIE['email'];
 
-
-
-$query = mysqli_query($conn, "SELECT * FROM utenti WHERE email = '$email'");
-
-$utente = mysqli_fetch_assoc($query);
+$query = "SELECT * FROM utenti WHERE email = ?";
+$stmt = mysqli_prepare($conn, $query);
+mysqli_stmt_bind_param($stmt, "s", $email);
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
+$utente = mysqli_fetch_assoc($result);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -42,40 +43,32 @@ $utente = mysqli_fetch_assoc($query);
                             <?php echo isset($utente['ruolo']) && (int)$utente['ruolo'] === 1 ? 'Admin' : 'Utente'; ?>
                         </p>
                         <h6>Indirizzi associati:</h6>
-                        <div class="list-group mb-3">
+                        <ul class="list-unstyled">
                             <?php 
-                                // Gestione eliminazione
-                                if(isset($_GET['elimina'])) {
-                                    $id_elimina = $_GET['elimina'];
-                                    mysqli_query($conn, "DELETE FROM indirizzi WHERE id = '$id_elimina' AND utente_email = '$email'");
-                                    echo "<div class='alert alert-success'>Indirizzo eliminato con successo.</div>";
-                                }
-                                
-                                $risultato = mysqli_query($conn, "SELECT * FROM indirizzi WHERE utente_email = '$email'");
+                                $addr_query = "SELECT * FROM indirizzi WHERE utente_email = ?";
+                                $addr_stmt = mysqli_prepare($conn, $addr_query);
+                                mysqli_stmt_bind_param($addr_stmt, "s", $email);
+                                mysqli_stmt_execute($addr_stmt);
+                                $risultato = mysqli_stmt_get_result($addr_stmt);
                                 
                                 if(mysqli_num_rows($risultato) > 0)
                                 {
                                     while($riga = mysqli_fetch_assoc($risultato)) {
-                                        echo "<div class='list-group-item d-flex justify-content-between align-items-center'>";
-                                        echo "<div>";
-                                        echo "<strong>Via {$riga['via']}</strong><br>";
-                                        echo "{$riga['citta']}, {$riga['cap']}";
-                                        if(!empty($riga['provincia'])) echo " ({$riga['provincia']})";
-                                        echo "<br>{$riga['paese']}";
-                                        echo "</div>";
-                                        echo "<div>";
-                                        echo "<a href='indirizzo.php?modifica={$riga['id']}' class='btn btn-sm btn-warning me-1'>Modifica</a>";
-                                        echo "<a href='profilo.php?elimina={$riga['id']}' class='btn btn-sm btn-danger' onclick='return confirm(\"Sei sicuro di voler eliminare questo indirizzo?\")'>Elimina</a>";
-                                        echo "</div>";
-                                        echo "</div>";
+                                        $isPrincipale = isset($riga['principale']) && (int)$riga['principale'] === 1;
+                                        echo "<li>";
+                                        if($isPrincipale) {
+                                            echo "<i class='fa-solid fa-circle-dot' style='color: #28a745; margin-right: 5px;' title='Indirizzo principale'></i>";
+                                        }
+                                        echo htmlspecialchars("Via {$riga['via']}, {$riga['citta']}, {$riga['paese']}, {$riga['cap']}, Provincia: {$riga['provincia']}");
+                                        echo "</li>";
                                     }
                                 }
                                 else
                                 {
-                                    echo "<div class='list-group-item text-center'>Nessun indirizzo aggiunto.</div>";
+                                    echo "<li>Nessun indirizzo aggiunto.</li>";
                                 }
                             ?>
-                        </div>
+                        </ul>
                         <a href="indirizzo.php" class="btn btn-outline-primary btn-sm mb-3">Aggiungi indirizzo</a>
                         <?php 
                             if(isset($utente['ruolo']) && (int)$utente['ruolo'] === 1) 
@@ -91,7 +84,7 @@ $utente = mysqli_fetch_assoc($query);
         <div style="position: absolute; bottom: 0; width: 100vw;">
             <?php include "footer.html"; ?>
         </div>
-        <script src="https://kit.fontawesome.com/2459a8ac1f.js" crossorigin="anonymous"></script>
+        <script src="https://kit.fontawesome.com/be97dda312.js" crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
     </body>
 </html>
