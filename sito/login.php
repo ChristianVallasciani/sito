@@ -28,16 +28,17 @@
 include "connessione.php";
 
 
-  if ($_SERVER["REQUEST_METHOD"] == "POST") {
-      $email = trim($_POST['email'] ?? '');
-      $password = trim($_POST['password'] ?? '');
-      $ricordami = isset($_POST['remember']);
-      
-      if (empty($email) || empty($password)) {
-        echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>Errore: email e password obbligatorie.</div>";
-        exit;
-      }
-   
+$errore = '';
+$successo = '';
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $email = trim($_POST['email'] ?? '');
+    $password = trim($_POST['password'] ?? '');
+    $ricordami = isset($_POST['remember']);
+    
+    if (empty($email) || empty($password)) {
+      $errore = "Errore: email e password obbligatorie.";
+    } else {
       $query = "SELECT * FROM utenti WHERE email=?";
       $stmt = mysqli_prepare($conn, $query);
       mysqli_stmt_bind_param($stmt, "s", $email);
@@ -45,24 +46,31 @@ include "connessione.php";
       $result = mysqli_stmt_get_result($stmt);
       
       if (!$result || mysqli_num_rows($result) == 0) {
-        echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>Errore: utente non trovato.</div>";
-        exit;
+        $errore = "Errore: utente non trovato.";
+      } else {
+        $utenteTrovato = mysqli_fetch_assoc($result);
+        
+        if (password_verify($password, $utenteTrovato['password'])) {
+          $cookieDuration = $ricordami ? time() + 86400 * 30 : 0;
+          setcookie("email", $email, $cookieDuration, "/");
+          $successo = "Benvenuto {$utenteTrovato['nome']}! Login effettuato correttamente.";
+          header('Location: profilo.php');
+          exit;
+        } else {
+          $errore = "Errore: password errata.";
+        }
+      }
     }
-    $utenteTrovato = mysqli_fetch_assoc($result);
-
-    if (password_verify($password, $utenteTrovato['password'])) {
-
-    $cookieDuration = $ricordami ? time() + 86400 * 30 : 0;
-    setcookie("email", $email, $cookieDuration, "/");
-
-        echo "<div class='alert alert-success mx-auto my-3 fixed-top' style='max-width: 600px;'>Benvenuto {$utenteTrovato['nome']}! Login effettuato correttamente.</div>";
-    } else {
-        echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>Errore: password errata.</div>";
-  }
-  header('Location: profilo.php');
-exit;
 }
 ?>
+
+      <?php if($errore): ?>
+        <div class='alert alert-danger mx-auto my-3' style='max-width: 600px;'><?php echo htmlspecialchars($errore); ?></div>
+      <?php endif; ?>
+      
+      <?php if($successo): ?>
+        <div class='alert alert-success mx-auto my-3' style='max-width: 600px;'><?php echo htmlspecialchars($successo); ?></div>
+      <?php endif; ?>
 
       <div class="container my-5">
         <div class="row justify-content-center">
