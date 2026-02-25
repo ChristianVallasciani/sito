@@ -28,53 +28,72 @@
     <main>
       <?php
       include "connessione.php";
+      $isAjax = isset($_SERVER['HTTP_X_AJAX']);
+
       if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $name = trim($_POST['name'] ?? '');
-        $surname = trim($_POST['surname'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $password = trim($_POST['password'] ?? '');
-        $confirm_password = trim($_POST['confirm_password'] ?? '');
-        
+        if ($isAjax) {
+          $data = json_decode(file_get_contents('php://input'), true);
+          $name = trim($data['name'] ?? '');
+          $surname = trim($data['surname'] ?? '');
+          $email = trim($data['email'] ?? '');
+          $password = trim($data['password'] ?? '');
+          $confirm_password = trim($data['confirm_password'] ?? '');
+        } else {
+          $name = trim($_POST['name'] ?? '');
+          $surname = trim($_POST['surname'] ?? '');
+          $email = trim($_POST['email'] ?? '');
+          $password = trim($_POST['password'] ?? '');
+          $confirm_password = trim($_POST['confirm_password'] ?? '');
+        }
+
+        $errore = '';
         if (empty($name) || empty($surname) || empty($email) || empty($password) || empty($confirm_password)) {
-          echo "<div class='container mt-3'><div class='alert alert-danger text-center'>Devono essere riempiti tutti i campi</div></div>";
+          $errore = 'Devono essere riempiti tutti i campi';
+        } elseif (!preg_match("/^[A-Za-z]+$/", $name) || !preg_match("/^[A-Za-z]+$/", $surname)) {
+          $errore = 'Nome e cognome devono contenere solo lettere.';
+        } elseif ($password !== $confirm_password) {
+          $errore = 'Le password non coincidono.';
+        } else {
+          $check_query = "SELECT * FROM utenti WHERE email = ?";
+          $check_stmt = mysqli_prepare($conn, $check_query);
+          mysqli_stmt_bind_param($check_stmt, "s", $email);
+          mysqli_stmt_execute($check_stmt);
+          $check_result = mysqli_stmt_get_result($check_stmt);
+          if (mysqli_num_rows($check_result) != 0) {
+            $errore = "L'email è già registrata.";
+          } else {
+            $password_hash = password_hash($password, PASSWORD_DEFAULT);
+            $insert_query = "INSERT INTO utenti (nome, surname, email, password, ruolo) VALUES (?, ?, ?, ?, 0)";
+            $insert_stmt = mysqli_prepare($conn, $insert_query);
+            mysqli_stmt_bind_param($insert_stmt, "ssss", $name, $surname, $email, $password_hash);
+
+            if (mysqli_stmt_execute($insert_stmt)) {
+              if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => "Benvenuto $name! Registrazione completata."]);
+                exit;
+              }
+              header('Location: profilo.php');
+              exit;
+            } else {
+              $errore = 'Errore durante la registrazione.';
+            }
+          }
+        }
+
+        if ($isAjax) {
+          header('Content-Type: application/json');
+          echo json_encode(['success' => false, 'message' => $errore]);
           exit;
         }
 
-        if(!preg_match("/^[A-Za-z]+$/", $name) || !preg_match("/^[A-Za-z]+$/", $surname)) {
-          echo "<div class='container mt-3'><div class='alert alert-danger text-center'>Nome e cognome devono contenere solo lettere.</div></div>";
-          exit;
+        if ($errore) {
+          echo "<div class='container mt-3'><div class='alert alert-danger text-center'>" . htmlspecialchars($errore) . "</div></div>";
         }
-
-        if ($password !== $confirm_password) {
-          echo "<div class='container mt-3'><div class='alert alert-danger text-center'>Le password non coincidono.</div></div>";
-          exit;
-        }
-        
-        $check_query = "SELECT * FROM utenti WHERE email = ?";
-        $check_stmt = mysqli_prepare($conn, $check_query);
-        mysqli_stmt_bind_param($check_stmt, "s", $email);
-        mysqli_stmt_execute($check_stmt);
-        $check_result = mysqli_stmt_get_result($check_stmt);
-        if (mysqli_num_rows($check_result) != 0) {
-            echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>L'email è già registrata.</div>";
-        	exit;
-        }
-
-        $password_hash = password_hash($password, PASSWORD_DEFAULT);
-        
-        $insert_query = "INSERT INTO utenti (nome, surname, email, password, ruolo) VALUES (?, ?, ?, ?, 0)";
-        $insert_stmt = mysqli_prepare($conn, $insert_query);
-        mysqli_stmt_bind_param($insert_stmt, "ssss", $name, $surname, $email, $password_hash);
-        mysqli_stmt_execute($insert_stmt);
-
-        echo "<div class='alert alert-success mx-auto my-3 fixed-top' style='max-width: 600px;'>Benvenuto $name! I tuoi dati sono stati salvati correttamente!</div>";
-    
-         mysqli_close($conn);
-         header('Location: profilo.php');
-exit;
-
       }
       ?>
+
+      <div id="msg-container" class="mx-auto my-3" style="max-width: 600px;"></div>
 
       <div class="container my-5">
         <div class="row justify-content-center">
@@ -83,7 +102,7 @@ exit;
               <div class="card-body p-4">
                 <h3 class="text-center mb-4">Crea il tuo account</h3>
 
-                <form method="POST" action="register.php" onsubmit="return checkregister()">
+                <form id="registerForm" onsubmit="handleRegister(event)">
                   <div class="mb-3">
                     <label for="name" class="form-label">Nome</label>
                     <input type="text" class="form-control" id="name" name="name" placeholder="Inserisci il tuo nome" required>
@@ -110,7 +129,7 @@ exit;
                   </div>
 
                   <div class="d-grid mt-4">
-                    <button type="submit" class="btn btn-primary">Registrati</button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">Registrati</button>
                   </div>
                 </form>
               </div>
@@ -123,36 +142,61 @@ exit;
     <?php include 'footer.html'; ?>
 
     <script>
-      function checkregister(){
-        const pw1 = document.getElementById("password").value;
-        const pw2 = document.getElementById("confirm_password").value;
-        
-        const name = document.getElementById("name").value;
-        const surname = document.getElementById("surname").value;
+      function showMsg(msg, type) {
+        document.getElementById('msg-container').innerHTML =
+          '<div class="alert alert-' + type + ' alert-dismissible fade show">' + msg +
+          '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+      }
 
-        if (!name || !surname || !pw1 || !pw2) {
-          alert("Tutti i campi sono obbligatori");
-          return false;
-        }
+      function handleRegister(e) {
+        e.preventDefault();
+        var name = document.getElementById('name').value.trim();
+        var surname = document.getElementById('surname').value.trim();
+        var email = document.getElementById('email').value.trim();
+        var password = document.getElementById('password').value.trim();
+        var confirmPassword = document.getElementById('confirm_password').value.trim();
+        var btn = document.getElementById('submitBtn');
 
-        const soloLettere = /^[A-Za-z]+$/.test(name) && /^[A-Za-z]+$/.test(surname);
+        if (!name || !surname || !email || !password || !confirmPassword) { showMsg('Tutti i campi sono obbligatori', 'danger'); return; }
+        if (!/^[A-Za-z]+$/.test(name) || !/^[A-Za-z]+$/.test(surname)) { showMsg('Nome e cognome devono contenere solo lettere', 'danger'); return; }
+        if (password !== confirmPassword) { showMsg('Le password non corrispondono', 'danger'); return; }
+        if (password.length < 8) { showMsg('La password deve avere almeno 8 caratteri', 'danger'); return; }
 
-        if (pw1 !== pw2) {
-          alert("Le password non corrispondono");
-          return false;
-        }
-        
-        if (pw1.length < 8) {
-          alert("La password deve avere almeno 8 caratteri");
-          return false;
-        }
-        
-        if (!soloLettere) {
-          alert("Nome e cognome devono contenere solo lettere.");
-          return false;
-        }
-        
-        return true;
+        btn.disabled = true;
+        btn.textContent = 'Registrazione in corso...';
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'service.php', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+              var data = JSON.parse(xhr.responseText);
+              if (data.status) {
+                showMsg(data.message, 'success');
+                setTimeout(function() { window.location.href = 'profilo.php'; }, 1500);
+              } else {
+                showMsg(data.message, 'danger');
+                btn.disabled = false;
+                btn.textContent = 'Registrati';
+              }
+            } else {
+              showMsg('Errore di connessione.', 'danger');
+              btn.disabled = false;
+              btn.textContent = 'Registrati';
+            }
+          }
+        };
+
+        xhr.send(JSON.stringify({
+          action: 'register',
+          name: name,
+          surname: surname,
+          email: email,
+          password: password,
+          confirm_password: confirmPassword
+        }));
       }
     </script>
 

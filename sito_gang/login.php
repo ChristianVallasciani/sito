@@ -27,14 +27,22 @@
 <?php
 include "connessione.php";
 
-
+// Rilevamento richiesta AJAX
+$isAjax = isset($_SERVER['HTTP_X_AJAX']);
 $errore = '';
 $successo = '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = trim($_POST['email'] ?? '');
-    $password = trim($_POST['password'] ?? '');
-    $ricordami = isset($_POST['remember']);
+    if ($isAjax) {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $email = trim($data['email'] ?? '');
+        $password = trim($data['password'] ?? '');
+        $ricordami = !empty($data['remember']);
+    } else {
+        $email = trim($_POST['email'] ?? '');
+        $password = trim($_POST['password'] ?? '');
+        $ricordami = isset($_POST['remember']);
+    }
     
     if (empty($email) || empty($password)) {
       $errore = "Errore: email e password obbligatorie.";
@@ -49,11 +57,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $errore = "Errore: utente non trovato.";
       } else {
         $utenteTrovato = mysqli_fetch_assoc($result);
-        
+
         if (password_verify($password, $utenteTrovato['password'])) {
           $cookieDuration = $ricordami ? time() + 86400 * 30 : 0;
           setcookie("email", $email, $cookieDuration, "/");
           $successo = "Benvenuto {$utenteTrovato['nome']}! Login effettuato correttamente.";
+          if ($isAjax) {
+              header('Content-Type: application/json');
+              echo json_encode(['success' => true, 'message' => $successo]);
+              exit;
+          }
           header('Location: profilo.php');
           exit;
         } else {
@@ -61,8 +74,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
       }
     }
+    
+    if ($isAjax) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => $errore]);
+        exit;
+    }
 }
 ?>
+
+      <div id="msg-container" class="mx-auto my-3" style="max-width: 600px;"></div>
 
       <?php if($errore): ?>
         <div class='alert alert-danger mx-auto my-3' style='max-width: 600px;'><?php echo htmlspecialchars($errore); ?></div>
@@ -79,7 +100,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
               <div class="card-body p-4">
                 <h3 class="text-center mb-4">Accedi al tuo account</h3>
 
-                <form action="login.php" method="POST" onsubmit="return checkLogin()">
+                <form id="loginForm" onsubmit="handleLogin(event)">
                   <div class="mb-3">
                     <label for="email" class="form-label">Indirizzo Email</label>
                     <input type="email" class="form-control" id="email" name="email" placeholder="nome@email.com" required>
@@ -96,7 +117,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                   </div>
 
                   <div class="d-grid">
-                    <button type="submit" class="btn btn-primary">Accedi</button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">Accedi</button>
                   </div>
                 </form>
 
@@ -115,21 +136,50 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <?php include 'footer.html'; ?>
 
     <script>
-      function checkLogin(){
-        const email = document.getElementById("email").value;
-        const pwd = document.getElementById("password").value;
-        
-        if (!email || !pwd) {
-          alert("Email e password sono obbligatorie");
-          return false;
-        }
-        
-        if (pwd.length < 8) {
-          alert("La password deve avere almeno 8 caratteri");
-          return false;
-        }
-        
-        return true;
+      function showMsg(msg, type) {
+        document.getElementById('msg-container').innerHTML =
+          '<div class="alert alert-' + type + ' alert-dismissible fade show">' + msg +
+          '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+      }
+
+      function handleLogin(e) {
+        e.preventDefault();
+        var email = document.getElementById('email').value.trim();
+        var password = document.getElementById('password').value.trim();
+        var remember = document.getElementById('remember').checked;
+        var btn = document.getElementById('submitBtn');
+
+        if (!email || !password) { showMsg('Email e password sono obbligatorie', 'danger'); return; }
+        if (password.length < 8) { showMsg('La password deve avere almeno 8 caratteri', 'danger'); return; }
+
+        btn.disabled = true;
+        btn.textContent = 'Accesso in corso...';
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'service.php', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+              var data = JSON.parse(xhr.responseText);
+              if (data.status) {
+                showMsg(data.message, 'success');
+                setTimeout(function() { window.location.href = 'profilo.php'; }, 1500);
+              } else {
+                showMsg(data.message, 'danger');
+                btn.disabled = false;
+                btn.textContent = 'Accedi';
+              }
+            } else {
+              showMsg('Errore di connessione.', 'danger');
+              btn.disabled = false;
+              btn.textContent = 'Accedi';
+            }
+          }
+        };
+
+        xhr.send(JSON.stringify({ action: 'login', email: email, password: password, remember: remember }));
       }
     </script>
   </body>

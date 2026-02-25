@@ -20,63 +20,73 @@
         }
 
         $email = $_COOKIE['email'];
+        $isAjax = isset($_SERVER['HTTP_X_AJAX']);
         $messaggio = '';
+        $errore = '';
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-          $via = trim($_POST['via'] ?? '');
-          $citta = trim($_POST['citta'] ?? '');
-          $cap = trim($_POST['cap'] ?? '');
-          $provincia = trim($_POST['provincia'] ?? '');
-          $paese = trim($_POST['paese'] ?? '');
+          if ($isAjax) {
+            $data = json_decode(file_get_contents('php://input'), true);
+            $via = trim($data['via'] ?? '');
+            $citta = trim($data['citta'] ?? '');
+            $cap = trim($data['cap'] ?? '');
+            $provincia = trim($data['provincia'] ?? '');
+            $paese = trim($data['paese'] ?? '');
+          } else {
+            $via = trim($_POST['via'] ?? '');
+            $citta = trim($_POST['citta'] ?? '');
+            $cap = trim($_POST['cap'] ?? '');
+            $provincia = trim($_POST['provincia'] ?? '');
+            $paese = trim($_POST['paese'] ?? '');
+          }
 
-          // Validazione campi obbligatori
           if ($via === '' || $citta === '' || $cap === '' || $paese === '') {
-            $messaggio = "<div class='alert alert-danger'>Compila tutti i campi obbligatori.</div>";
-          } 
-          // Validazione lunghezza via
-          else if (strlen($via) < 3 || strlen($via) > 100) {
-            $messaggio = "<div class='alert alert-danger'>La via deve avere tra 3 e 100 caratteri.</div>";
-          }
-          // Validazione lunghezza città
-          else if (strlen($citta) < 2 || strlen($citta) > 50) {
-            $messaggio = "<div class='alert alert-danger'>La città deve avere tra 2 e 50 caratteri.</div>";
-          }
-          // Validazione formato CAP (5 cifre)
-          else if (!preg_match('/^\d{5}$/', $cap)) {
-            $messaggio = "<div class='alert alert-danger'>Il CAP deve essere composto da 5 cifre.</div>";
-          }
-          // Validazione provincia
-          else if (strlen($provincia) > 2) {
-            $messaggio = "<div class='alert alert-danger'>La provincia deve essere un codice di 2 caratteri.</div>";
-          }
-          // Validazione paese
-          else if (strlen($paese) < 2 || strlen($paese) > 50) {
-            $messaggio = "<div class='alert alert-danger'>Il paese deve avere tra 2 e 50 caratteri.</div>";
-          }
-          // Se tutto è valido, salva nel database
-          else {
+            $errore = 'Compila tutti i campi obbligatori.';
+          } elseif (strlen($via) < 3 || strlen($via) > 100) {
+            $errore = 'La via deve avere tra 3 e 100 caratteri.';
+          } elseif (strlen($citta) < 2 || strlen($citta) > 50) {
+            $errore = 'La città deve avere tra 2 e 50 caratteri.';
+          } elseif (!preg_match('/^\d{5}$/', $cap)) {
+            $errore = 'Il CAP deve essere composto da 5 cifre.';
+          } elseif (strlen($provincia) > 2) {
+            $errore = 'La provincia deve essere un codice di 2 caratteri.';
+          } elseif (strlen($paese) < 2 || strlen($paese) > 50) {
+            $errore = 'Il paese deve avere tra 2 e 50 caratteri.';
+          } else {
             $stmt = mysqli_prepare($conn, "INSERT INTO indirizzi (utente_email, via, citta, cap, provincia, paese) VALUES (?, ?, ?, ?, ?, ?)");
             mysqli_stmt_bind_param($stmt, 'ssssss', $email, $via, $citta, $cap, $provincia, $paese);
 
             if (mysqli_stmt_execute($stmt)) {
-              $messaggio = "<div class='alert alert-success'>Indirizzo salvato correttamente.</div>";
+              $messaggio = 'Indirizzo salvato correttamente.';
             } else {
-              $messaggio = "<div class='alert alert-danger'>Errore durante il salvataggio dell'indirizzo.</div>";
+              $errore = 'Errore durante il salvataggio.';
             }
-
             mysqli_stmt_close($stmt);
           }
-        }
 
-        echo $messaggio;
+          if ($isAjax) {
+            header('Content-Type: application/json');
+            if ($errore) {
+              echo json_encode(['success' => false, 'message' => $errore]);
+            } else {
+              echo json_encode(['success' => true, 'message' => $messaggio]);
+            }
+            exit;
+          }
+
+          if ($errore) echo "<div class='alert alert-danger'>" . htmlspecialchars($errore) . "</div>";
+          if ($messaggio) echo "<div class='alert alert-success'>" . htmlspecialchars($messaggio) . "</div>";
+        }
       ?>
+
+      <div id="msg-container"></div>
 
       <div class="row justify-content-center">
         <div class="col-md-8">
           <div class="card shadow-sm border-0">
             <div class="card-body p-4">
               <h3 class="text-center mb-4">Aggiungi indirizzo</h3>
-              <form method="POST" action="indirizzo.php" onsubmit="return validateForm()">
+              <form id="addressForm" onsubmit="handleAddress(event)">
                 <div class="mb-3">
                   <label for="via" class="form-label">Via *</label>
                   <input type="text" class="form-control" id="via" name="via" required minlength="3" maxlength="100" placeholder="Es: Via Roma 10">
@@ -100,7 +110,7 @@
                   </div>
                 </div>
                 <div class="d-grid mt-4">
-                  <button type="submit" class="btn btn-primary">Salva indirizzo</button>
+                  <button type="submit" class="btn btn-primary" id="submitBtn">Salva indirizzo</button>
                 </div>
               </form>
             </div>
@@ -112,44 +122,52 @@
     <?php include 'footer.html'; ?>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-      function validateForm() {
-        const via = document.getElementById('via').value.trim();
-        const citta = document.getElementById('citta').value.trim();
-        const cap = document.getElementById('cap').value.trim();
-        const provincia = document.getElementById('provincia').value.trim();
-        const paese = document.getElementById('paese').value.trim();
+      function showMsg(msg, type) {
+        document.getElementById('msg-container').innerHTML =
+          '<div class="alert alert-' + type + ' alert-dismissible fade show">' + msg +
+          '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+      }
 
-        // Validazione via
-        if (via.length < 3 || via.length > 100) {
-          alert('La via deve avere tra 3 e 100 caratteri');
-          return false;
-        }
+      function handleAddress(e) {
+        e.preventDefault();
+        var via = document.getElementById('via').value.trim();
+        var citta = document.getElementById('citta').value.trim();
+        var cap = document.getElementById('cap').value.trim();
+        var provincia = document.getElementById('provincia').value.trim();
+        var paese = document.getElementById('paese').value.trim();
+        var btn = document.getElementById('submitBtn');
 
-        // Validazione città
-        if (citta.length < 2 || citta.length > 50) {
-          alert('La città deve avere tra 2 e 50 caratteri');
-          return false;
-        }
+        if (!via || !citta || !cap || !paese) { showMsg('Compila tutti i campi obbligatori', 'danger'); return; }
+        if (via.length < 3 || via.length > 100) { showMsg('La via deve avere tra 3 e 100 caratteri', 'danger'); return; }
+        if (citta.length < 2 || citta.length > 50) { showMsg('La città deve avere tra 2 e 50 caratteri', 'danger'); return; }
+        if (!/^\d{5}$/.test(cap)) { showMsg('Il CAP deve contenere esattamente 5 cifre', 'danger'); return; }
+        if (provincia.length > 2) { showMsg('La provincia deve essere max 2 caratteri', 'danger'); return; }
+        if (paese.length < 2 || paese.length > 50) { showMsg('Il paese deve avere tra 2 e 50 caratteri', 'danger'); return; }
 
-        // Validazione CAP (5 cifre)
-        if (!/^\d{5}$/.test(cap)) {
-          alert('Il CAP deve contenere esattamente 5 cifre numeriche');
-          return false;
-        }
+        btn.disabled = true;
+        btn.textContent = 'Salvataggio in corso...';
 
-        // Validazione provincia (max 2 caratteri)
-        if (provincia.length > 2) {
-          alert('La provincia deve essere un codice di massimo 2 caratteri');
-          return false;
-        }
-
-        // Validazione paese
-        if (paese.length < 2 || paese.length > 50) {
-          alert('Il paese deve avere tra 2 e 50 caratteri');
-          return false;
-        }
-
-        return true;
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'service.php', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState === 4) {
+            btn.disabled = false;
+            btn.textContent = 'Salva indirizzo';
+            if (xhr.status === 200) {
+              var data = JSON.parse(xhr.responseText);
+              if (data.status) {
+                showMsg(data.message, 'success');
+                document.getElementById('addressForm').reset();
+              } else {
+                showMsg(data.message, 'danger');
+              }
+            } else {
+              showMsg('Errore di connessione.', 'danger');
+            }
+          }
+        };
+        xhr.send(JSON.stringify({ action: 'aggiungi_indirizzo', via: via, citta: citta, cap: cap, provincia: provincia, paese: paese }));
       }
     </script>
   </body>
