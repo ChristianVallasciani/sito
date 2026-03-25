@@ -46,13 +46,8 @@ if (isset($_COOKIE['email']) && $_COOKIE['email'] !== '') {
 
                 <form id="signup-form" method="POST" action="registersignup.php">
                   <div class="mb-3">
-                    <label for="name" class="form-label">Nome</label>
-                    <input type="text" class="form-control" id="name" name="name" placeholder="Inserisci il tuo nome" required>
-                  </div>
-
-                  <div class="mb-3">
-                    <label for="surname" class="form-label">Cognome</label>
-                    <input type="text" class="form-control" id="surname" name="surname" placeholder="Inserisci il tuo cognome" required>
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" name="username" placeholder="Inserisci il tuo username" required>
                   </div>
 
                   <div class="mb-3">

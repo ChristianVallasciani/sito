@@ -38,7 +38,7 @@ function rispondiJson(int $statusCode, bool $status, string $message, array $ext
 
 switch ($method) {
     case 'GET':
-        $result = mysqli_query($conn, 'SELECT nome, surname, email, ruolo FROM utenti');
+        $result = mysqli_query($conn, 'SELECT username, email, ruolo FROM utenti');
         $utenti = [];
 
         while ($row = mysqli_fetch_assoc($result)) {
@@ -49,13 +49,17 @@ switch ($method) {
         break;
 
     case 'POST':
-        $nome = trim($input['nome'] ?? '');
-        $cognome = trim($input['surname'] ?? '');
+        $username = trim($input['username'] ?? '');
         $email = trim($input['email'] ?? '');
         $password = trim($input['password'] ?? '');
 
-        if ($nome === '' || $cognome === '' || $email === '' || $password === '') {
-            rispondiJson(422, false, 'I campi nome, surname, email e password sono obbligatori.');
+        if ($username === '' || $email === '' || $password === '') {
+            rispondiJson(422, false, 'I campi username, email e password sono obbligatori.');
+            break;
+        }
+
+        if (!preg_match('/^[A-Za-z0-9_]+$/', $username)) {
+            rispondiJson(422, false, 'Username non valido.');
             break;
         }
 
@@ -64,21 +68,22 @@ switch ($method) {
             break;
         }
 
-        $checkStmt = mysqli_prepare($conn, 'SELECT email FROM utenti WHERE email = ? LIMIT 1');
-        mysqli_stmt_bind_param($checkStmt, 's', $email);
+        $checkStmt = mysqli_prepare($conn, 'SELECT id FROM utenti WHERE email = ? OR username = ? LIMIT 1');
+        mysqli_stmt_bind_param($checkStmt, 'ss', $email, $username);
         mysqli_stmt_execute($checkStmt);
         $checkResult = mysqli_stmt_get_result($checkStmt);
         $exists = mysqli_num_rows($checkResult) > 0;
         mysqli_stmt_close($checkStmt);
 
         if ($exists) {
-            rispondiJson(409, false, 'Email gia presente.');
+            rispondiJson(409, false, 'Email o username gia presenti.');
             break;
         }
 
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = mysqli_prepare($conn, 'INSERT INTO utenti (nome, surname, email, password, ruolo) VALUES (?, ?, ?, ?, 0)');
-        mysqli_stmt_bind_param($stmt, 'ssss', $nome, $cognome, $email, $passwordHash);
+        $ruolo = 'user';
+        $stmt = mysqli_prepare($conn, 'INSERT INTO utenti (username, email, password, ruolo) VALUES (?, ?, ?, ?)');
+        mysqli_stmt_bind_param($stmt, 'ssss', $username, $email, $passwordHash, $ruolo);
         $ok = mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
 
@@ -91,9 +96,8 @@ switch ($method) {
 
     case 'PUT':
         $email = trim($input['email'] ?? '');
-        $nome = trim($input['nome'] ?? '');
-        $cognome = trim($input['surname'] ?? '');
-        $ruolo = isset($input['ruolo']) ? (int)$input['ruolo'] : null;
+        $username = trim($input['username'] ?? '');
+        $ruolo = trim($input['ruolo'] ?? '');
 
         if ($email === '') {
             rispondiJson(422, false, 'Email obbligatoria per aggiornare utente.');
@@ -104,21 +108,19 @@ switch ($method) {
         $tipi = '';
         $valori = [];
 
-        if ($nome !== '') {
-            $campi[] = 'nome = ?';
+        if ($username !== '') {
+            $campi[] = 'username = ?';
             $tipi .= 's';
-            $valori[] = $nome;
+            $valori[] = $username;
         }
 
-        if ($cognome !== '') {
-            $campi[] = 'surname = ?';
-            $tipi .= 's';
-            $valori[] = $cognome;
-        }
-
-        if ($ruolo !== null) {
+        if ($ruolo !== '') {
+            if ($ruolo !== 'user' && $ruolo !== 'admin') {
+                rispondiJson(422, false, 'Ruolo non valido.');
+                break;
+            }
             $campi[] = 'ruolo = ?';
-            $tipi .= 'i';
+            $tipi .= 's';
             $valori[] = $ruolo;
         }
 

@@ -7,12 +7,17 @@ if (!isset($_COOKIE['email'])) {
 }
 
 $email = $_COOKIE['email'];
+$stmt = mysqli_prepare($conn, 'SELECT * FROM utenti WHERE email = ? LIMIT 1');
+mysqli_stmt_bind_param($stmt, 's', $email);
+mysqli_stmt_execute($stmt);
+$resultUtente = mysqli_stmt_get_result($stmt);
+$utente = $resultUtente ? mysqli_fetch_assoc($resultUtente) : null;
+mysqli_stmt_close($stmt);
 
-
-
-$query = mysqli_query($conn, "SELECT * FROM users WHERE email = '$email'");
-
-$utente = mysqli_fetch_assoc($query);
+if (!$utente) {
+    header('Location: login.php');
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -31,38 +36,40 @@ $utente = mysqli_fetch_assoc($query);
                         <h5 class="card-title mb-3">Il tuo profilo</h5>
                         <p class="mb-2">
                             <strong>Username:</strong><br>
-                            <?php echo $utente['nome']; ?>
+                            <?php echo htmlspecialchars($utente['username']); ?>
                         </p>
                         <p class="mb-2">
                             <strong>Email:</strong><br>
-                            <?php echo $utente['email']; ?>
+                            <?php echo htmlspecialchars($utente['email']); ?>
                         </p>
                         <p class="mb-3">
                             <strong>Tipo utente:</strong><br>
-                            <?php echo isset($utente['ruolo']) && (int)$utente['ruolo'] === 1 ? 'Admin' : 'Utente'; ?>
+                            <?php echo isset($utente['ruolo']) && $utente['ruolo'] === 'admin' ? 'Admin' : 'Utente'; ?>
                         </p>
                         <h6>Indirizzi associati:</h6>
                         <ul class="list-unstyled">
                             <?php 
-                                $risultato = mysqli_query($conn, "SELECT * FROM indirizzi WHERE utente_email = '$email'");
-                                
-                                if(mysqli_num_rows($risultato) > 0)
-                                {
-                                    while($riga = mysqli_fetch_assoc($risultato)) {
+                                $stmtIndirizzi = mysqli_prepare($conn, 'SELECT indirizzo, citta, cap, provincia FROM indirizzi WHERE utente_id = ?');
+                                mysqli_stmt_bind_param($stmtIndirizzi, 'i', $utente['id']);
+                                mysqli_stmt_execute($stmtIndirizzi);
+                                $risultato = mysqli_stmt_get_result($stmtIndirizzi);
+
+                                if ($risultato && mysqli_num_rows($risultato) > 0) {
+                                    while ($riga = mysqli_fetch_assoc($risultato)) {
                                         echo "<li>";
-                                        echo "Via {$riga['via']}, {$riga['citta']}, {$riga['paese']}, {$riga['cap']}, Provincia: {$riga['provincia']}";
+                                        echo htmlspecialchars($riga['indirizzo']) . ', ' . htmlspecialchars($riga['citta']) . ', ' . htmlspecialchars($riga['cap']) . ', Provincia: ' . htmlspecialchars($riga['provincia']);
                                         echo "</li>";
                                     }
-                                }
-                                else
-                                {
+                                } else {
                                     echo "<li>Nessun indirizzo aggiunto.</li>";
                                 }
+
+                                mysqli_stmt_close($stmtIndirizzi);
                             ?>
                         </ul>
                         <a href="indirizzo.php" class="btn btn-outline-primary btn-sm mb-3">Aggiungi indirizzo</a>
                         <?php 
-                            if(isset($utente['ruolo']) && (int)$utente['ruolo'] === 1) 
+                            if(isset($utente['ruolo']) && $utente['ruolo'] === 'admin') 
                             {
                                 echo "<a href='admin.php' class='btn btn-primary btn-sm'>Pannello Admin</a>";
                             }

@@ -31,11 +31,13 @@ async function submitAuthForm(form) {
         }
     });
 
+    const rawResponse = await response.text();
     let payload;
     try {
-        payload = await response.json();
+        payload = JSON.parse(rawResponse);
     } catch (error) {
-        showErrorNotification('Risposta non valida dal server.');
+        const details = rawResponse.trim();
+        showErrorNotification(details ? ('Server: ' + details.slice(0, 180)) : 'Risposta non valida dal server.');
         return;
     }
 
@@ -95,30 +97,24 @@ document.addEventListener('DOMContentLoaded', function () {
         signupForm.addEventListener('submit', async function (e) {
             e.preventDefault();
 
-            const nome = document.getElementById('name').value.trim();
-            const cognome = document.getElementById('surname').value.trim();
+            const username = document.getElementById('username').value.trim();
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const confermaPassword = document.getElementById('confirm_password').value;
             const termini = document.getElementById('termini');
 
-            if (!nome || !cognome || !email || !password || !confermaPassword) {
+            if (!username || !email || !password || !confermaPassword) {
                 showErrorNotification('Tutti i campi sono obbligatori.');
                 return;
             }
 
-            if (nome.length < 2) {
-                showErrorNotification('Il nome deve essere di almeno 2 lettere.');
+            if (username.length < 3) {
+                showErrorNotification('Lo username deve essere di almeno 3 caratteri.');
                 return;
             }
 
-            if (cognome.length < 2) {
-                showErrorNotification('Il cognome deve essere di almeno 2 lettere.');
-                return;
-            }
-
-            if (!/^[A-Za-z]+$/.test(nome) || !/^[A-Za-z]+$/.test(cognome)) {
-                showErrorNotification('Nome e cognome devono contenere solo lettere.');
+            if (!/^[A-Za-z0-9_]+$/.test(username)) {
+                showErrorNotification('Lo username puo contenere solo lettere, numeri e underscore.');
                 return;
             }
 

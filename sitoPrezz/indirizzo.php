@@ -22,18 +22,29 @@
         $email = $_COOKIE['email'];
         $messaggio = '';
 
+        $stmtUtente = mysqli_prepare($conn, 'SELECT id FROM utenti WHERE email = ? LIMIT 1');
+        mysqli_stmt_bind_param($stmtUtente, 's', $email);
+        mysqli_stmt_execute($stmtUtente);
+        $resultUtente = mysqli_stmt_get_result($stmtUtente);
+        $utente = $resultUtente ? mysqli_fetch_assoc($resultUtente) : null;
+        mysqli_stmt_close($stmtUtente);
+
+        if (!$utente) {
+          header('Location: login.php');
+          exit;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-          $via = trim($_POST['via'] ?? '');
+          $indirizzo = trim($_POST['indirizzo'] ?? '');
           $citta = trim($_POST['citta'] ?? '');
           $cap = trim($_POST['cap'] ?? '');
           $provincia = trim($_POST['provincia'] ?? '');
-          $paese = trim($_POST['paese'] ?? '');
 
-          if ($via === '' || $citta === '' || $cap === '' || $paese === '') {
+          if ($indirizzo === '' || $citta === '' || $cap === '' || $provincia === '') {
             $messaggio = "<div class='alert alert-danger'>Compila tutti i campi obbligatori.</div>";
           } else {
-            $stmt = mysqli_prepare($conn, "INSERT INTO indirizzi (utente_email, via, citta, cap, provincia, paese) VALUES (?, ?, ?, ?, ?, ?)");
-            mysqli_stmt_bind_param($stmt, 'ssssss', $email, $via, $citta, $cap, $provincia, $paese);
+            $stmt = mysqli_prepare($conn, 'INSERT INTO indirizzi (utente_id, indirizzo, citta, cap, provincia) VALUES (?, ?, ?, ?, ?)');
+            mysqli_stmt_bind_param($stmt, 'issss', $utente['id'], $indirizzo, $citta, $cap, $provincia);
 
             if (mysqli_stmt_execute($stmt)) {
               $messaggio = "<div class='alert alert-success'>Indirizzo salvato correttamente.</div>";
@@ -55,8 +66,8 @@
               <h3 class="text-center mb-4">Aggiungi indirizzo</h3>
               <form method="POST" action="indirizzo.php">
                 <div class="mb-3">
-                  <label for="via" class="form-label">Via *</label>
-                  <input type="text" class="form-control" id="via" name="via" required>
+                  <label for="indirizzo" class="form-label">Indirizzo *</label>
+                  <input type="text" class="form-control" id="indirizzo" name="indirizzo" required>
                 </div>
                 <div class="mb-3">
                   <label for="citta" class="form-label">Città *</label>
@@ -69,11 +80,7 @@
                   </div>
                   <div class="col-md-4">
                     <label for="provincia" class="form-label">Provincia</label>
-                    <input type="text" class="form-control" id="provincia" name="provincia">
-                  </div>
-                  <div class="col-md-4">
-                    <label for="paese" class="form-label">Paese *</label>
-                    <input type="text" class="form-control" id="paese" name="paese" required>
+                    <input type="text" class="form-control" id="provincia" name="provincia" required>
                   </div>
                 </div>
                 <div class="d-grid mt-4">

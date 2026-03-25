@@ -4,6 +4,15 @@ header('Content-Type: application/json');
 
 include 'connessione.php';
 
+if (!isset($conn) || !$conn || mysqli_connect_errno()) {
+    http_response_code(500);
+    echo json_encode([
+        'status' => false,
+        'message' => 'Connessione al database non riuscita: ' . ($conn_error ?? mysqli_connect_error())
+    ]);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode([
@@ -52,7 +61,15 @@ if (!empty($errori)) {
     exit;
 }
 
-$stmt = mysqli_prepare($conn, 'SELECT nome, email, password, ruolo FROM utenti WHERE email = ? LIMIT 1');
+$stmt = mysqli_prepare($conn, 'SELECT username, email, password, ruolo FROM utenti WHERE email = ? LIMIT 1');
+if (!$stmt) {
+    http_response_code(500);
+    echo json_encode([
+        'status' => false,
+        'message' => 'Errore query login: ' . mysqli_error($conn)
+    ]);
+    exit;
+}
 mysqli_stmt_bind_param($stmt, 's', $email);
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
@@ -82,8 +99,8 @@ setcookie('email', $email, $cookieDuration, '/', '', false, true);
 
 $_SESSION['utente_loggato'] = true;
 $_SESSION['email'] = $email;
-$_SESSION['nome_utente'] = $utente['nome'];
-$_SESSION['ruolo'] = (int)$utente['ruolo'];
+$_SESSION['username'] = $utente['username'];
+$_SESSION['ruolo'] = $utente['ruolo'];
 
 echo json_encode([
     'status' => true,

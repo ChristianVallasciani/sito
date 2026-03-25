@@ -6,10 +6,12 @@ $pass = "Venita3#";
 
 $conn = mysqli_connect($host, $user, $pass, $dbname);
 
-if (!$conn) {
-    die('Connessione al database fallita: ' . mysqli_connect_error());
-}
+$conn_error = null;
 
-mysqli_set_charset($conn, 'utf8mb4');
+if (!$conn) {
+    $conn_error = mysqli_connect_error();
+} else {
+    mysqli_set_charset($conn, 'utf8mb4');
+}
 
 

@@ -14,7 +14,7 @@ $resultUtente = mysqli_stmt_get_result($stmtUtente);
 $utente = $resultUtente ? mysqli_fetch_assoc($resultUtente) : null;
 mysqli_stmt_close($stmtUtente);
 
-if (!$utente || (int)$utente['ruolo'] !== 1) {
+if (!$utente || $utente['ruolo'] !== 'admin') {
     header("Location: index.php");
     exit;
 }
@@ -46,14 +46,14 @@ $users = mysqli_query($conn, "SELECT * FROM utenti");
                 <?php while ($u = mysqli_fetch_assoc($users)) { ?>
                     <tr data-email="<?= htmlspecialchars($u['email'], ENT_QUOTES, 'UTF-8') ?>">
                         <td><?= $u['email'] ?></td>
-                        <td class="role-label"><?= $u['ruolo'] == 1 ? 'Admin' : 'Utente' ?></td>
+                        <td class="role-label"><?= $u['ruolo'] === 'admin' ? 'Admin' : 'Utente' ?></td>
 
                         <td>
                             <form class="d-flex justify-content-center gap-2 js-update-role">
                                 <input type="hidden" name="email" value="<?= htmlspecialchars($u['email'], ENT_QUOTES, 'UTF-8') ?>">
                                 <select name="ruolo" class="form-select form-select-sm w-auto">
-                                    <option value="0" <?= $u['ruolo'] == 0 ? 'selected' : '' ?>>Utente</option>
-                                    <option value="1" <?= $u['ruolo'] == 1 ? 'selected' : '' ?>>Admin</option>
+                                    <option value="user" <?= $u['ruolo'] === 'user' ? 'selected' : '' ?>>Utente</option>
+                                    <option value="admin" <?= $u['ruolo'] === 'admin' ? 'selected' : '' ?>>Admin</option>
                                 </select>
                                 <button class="btn btn-primary btn-sm" type="submit">Cambia</button>
                             </form>
@@ -112,7 +112,7 @@ $users = mysqli_query($conn, "SELECT * FROM utenti");
                     event.preventDefault();
 
                     const email = form.querySelector('input[name="email"]').value;
-                    const ruolo = parseInt(form.querySelector('select[name="ruolo"]').value, 10);
+                    const ruolo = form.querySelector('select[name="ruolo"]').value;
 
                     try {
                         await callAdminApi('PUT', { email: email, ruolo: ruolo });
@@ -120,7 +120,7 @@ $users = mysqli_query($conn, "SELECT * FROM utenti");
                         if (row) {
                             const roleLabel = row.querySelector('.role-label');
                             if (roleLabel) {
-                                roleLabel.textContent = ruolo === 1 ? 'Admin' : 'Utente';
+                                roleLabel.textContent = ruolo === 'admin' ? 'Admin' : 'Utente';
                             }
                         }
                         showAdminAlert('Ruolo aggiornato con successo.', 'success');

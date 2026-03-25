@@ -7,7 +7,7 @@ if (!isset($conn) || !$conn || mysqli_connect_errno()) {
     http_response_code(500);
     echo json_encode([
         'status' => false,
-        'message' => 'Connessione al database non riuscita.'
+        'message' => 'Connessione al database non riuscita: ' . ($conn_error ?? mysqli_connect_error())
     ]);
     exit;
 }
@@ -21,8 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$nome = trim($_POST['name'] ?? '');
-$cognome = trim($_POST['surname'] ?? '');
+$username = trim($_POST['username'] ?? '');
 $email = trim($_POST['email'] ?? '');
 $password = trim($_POST['password'] ?? '');
 $confermaPassword = trim($_POST['confirm_password'] ?? '');
@@ -30,20 +29,16 @@ $termini = isset($_POST['termini']) ? $_POST['termini'] : '';
 
 $errori = [];
 
-if ($nome === '' || $cognome === '' || $email === '' || $password === '' || $confermaPassword === '') {
+if ($username === '' || $email === '' || $password === '' || $confermaPassword === '') {
     $errori[] = 'Tutti i campi sono obbligatori.';
 }
 
-if (strlen($nome) < 2) {
-    $errori[] = 'Il nome deve essere di almeno 2 lettere.';
+if (strlen($username) < 3) {
+    $errori[] = 'Lo username deve essere di almeno 3 caratteri.';
 }
 
-if (strlen($cognome) < 2) {
-    $errori[] = 'Il cognome deve essere di almeno 2 lettere.';
-}
-
-if (!preg_match('/^[A-Za-z]+$/', $nome) || !preg_match('/^[A-Za-z]+$/', $cognome)) {
-    $errori[] = 'Nome e cognome devono contenere solo lettere.';
+if (!preg_match('/^[A-Za-z0-9_]+$/', $username)) {
+    $errori[] = 'Lo username puo contenere solo lettere, numeri e underscore.';
 }
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -83,8 +78,16 @@ if (!empty($errori)) {
     exit;
 }
 
-$stmtCheck = mysqli_prepare($conn, 'SELECT email FROM utenti WHERE email = ? LIMIT 1');
-mysqli_stmt_bind_param($stmtCheck, 's', $email);
+$stmtCheck = mysqli_prepare($conn, 'SELECT id FROM utenti WHERE email = ? OR username = ? LIMIT 1');
+if (!$stmtCheck) {
+    http_response_code(500);
+    echo json_encode([
+        'status' => false,
+        'message' => 'Errore query controllo utente: ' . mysqli_error($conn)
+    ]);
+    exit;
+}
+mysqli_stmt_bind_param($stmtCheck, 'ss', $email, $username);
 mysqli_stmt_execute($stmtCheck);
 $resultCheck = mysqli_stmt_get_result($stmtCheck);
 $esiste = mysqli_num_rows($resultCheck) > 0;
@@ -94,14 +97,23 @@ if ($esiste) {
     http_response_code(409);
     echo json_encode([
         'status' => false,
-        'message' => 'Email gia registrata, prova con un altro indirizzo.'
+        'message' => 'Email o username gia registrati, prova con altri dati.'
     ]);
     exit;
 }
 
 $passwordHash = password_hash($password, PASSWORD_DEFAULT);
-$stmtInsert = mysqli_prepare($conn, 'INSERT INTO utenti (nome, surname, email, password, ruolo) VALUES (?, ?, ?, ?, 0)');
-mysqli_stmt_bind_param($stmtInsert, 'ssss', $nome, $cognome, $email, $passwordHash);
+$ruolo = 'user';
+$stmtInsert = mysqli_prepare($conn, 'INSERT INTO utenti (username, email, password, ruolo) VALUES (?, ?, ?, ?)');
+if (!$stmtInsert) {
+    http_response_code(500);
+    echo json_encode([
+        'status' => false,
+        'message' => 'Errore query registrazione: ' . mysqli_error($conn)
+    ]);
+    exit;
+}
+mysqli_stmt_bind_param($stmtInsert, 'ssss', $username, $email, $passwordHash, $ruolo);
 $ok = mysqli_stmt_execute($stmtInsert);
 mysqli_stmt_close($stmtInsert);
 
