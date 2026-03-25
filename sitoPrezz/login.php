@@ -1,3 +1,10 @@
+<?php
+if (isset($_COOKIE['email']) && $_COOKIE['email'] !== '') {
+  header('Location: profilo.php');
+  exit;
+}
+?>
+
 <!doctype html>
 <html lang="it">
   <head>
@@ -24,34 +31,10 @@
     <?php include 'header.html'; ?>
 
     <main>
-<?php
-include "connessione.php";
-
-
-  if ($_SERVER["REQUEST_METHOD"] == "POST") {
-      $email = trim($_POST['email'] ?? '');
-      $password = trim($_POST['password'] ?? '');
-      $ricordami = isset($_POST['remember']);
-   
-      $query = "SELECT * FROM utenti WHERE email='$email'";
-      $result = mysqli_query($conn, $query);
-      if (!$result || mysqli_num_rows($result) == 0) {
-        echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>Errore: utente non trovato.</div>";
-        exit;
-    }
-    $utenteTrovato = mysqli_fetch_assoc($result);
-
-    if (password_verify($password, $utenteTrovato['password'])) {
-
-    $cookieDuration = $ricordami ? time() + 86400 * 30 : 0; // session cookie se non ricordami
-    setcookie("email", $email, $cookieDuration, "/");
-
-        echo "<div class='alert alert-success mx-auto my-3 fixed-top' style='max-width: 600px;'>Benvenuto {$utenteTrovato['nome']}! Login effettuato correttamente.</div>";
-    } else {
-        echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>Errore: password errata.</div>";
-  }
-}
-?>
+      <div id="error-notification" class="alert alert-danger fade show" role="alert"
+        style="display:none; position: fixed; bottom: 20px; right: 20px; z-index: 1050; min-width: 250px;">
+        <span id="error-message"></span>
+      </div>
 
       <div class="container my-5">
         <div class="row justify-content-center">
@@ -60,7 +43,7 @@ include "connessione.php";
               <div class="card-body p-4">
                 <h3 class="text-center mb-4">Accedi al tuo account</h3>
 
-                <form action="login.php" method="POST" onsubmit="return chekregister()">
+                <form id="login-form" action="registerlogin.php" method="POST">
                   <div class="mb-3">
                     <label for="email" class="form-label">Indirizzo Email</label>
                     <input type="email" class="form-control" id="email" name="email" placeholder="nome@email.com" required>
@@ -95,12 +78,6 @@ include "connessione.php";
 
     <?php include 'footer.html'; ?>
 
-    <script>
-      function chekregister(){
-        const email = document.getElementById("email").value;
-        const pwd = document.getElementById("password").value;
-
-      }
-    </script>
+    <script src="assets/js/auth.js"></script>
   </body>
 </html>

@@ -1,3 +1,10 @@
+<?php
+if (isset($_COOKIE['email']) && $_COOKIE['email'] !== '') {
+  header('Location: profilo.php');
+  exit;
+}
+?>
+
 <!doctype html>
 <html lang="it">
   <head>
@@ -24,50 +31,11 @@
 
     <?php include 'header.html'; ?>
  
-
     <main>
-      <?php
-      include "connessione.php";
-      if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $name = trim($_POST['name'] ?? '');
-        $surname = trim($_POST['surname'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $password = trim($_POST['password'] ?? '');
-        $confirm_password = trim($_POST['confirm_password'] ?? '');
-        
-        if (empty($name) || empty($surname) || empty($email) || empty($password) || empty($confirm_password)) {
-          echo "<div class='container mt-3'><div class='alert alert-danger text-center'>Devono essere riempiti tutti i campi</div></div>";
-          exit;
-        }
-
-        if(!preg_match("/^[A-Za-z]+$/", $name) || !preg_match("/^[A-Za-z]+$/", $surname)) {
-          echo "<div class='container mt-3'><div class='alert alert-danger text-center'>Nome e cognome devono contenere solo lettere.</div></div>";
-          exit;
-        }
-
-        if ($password !== $confirm_password) {
-          echo "<div class='container mt-3'><div class='alert alert-danger text-center'>Le password non coincidono.</div></div>";
-          exit;
-        }
-        
-        $check_query = "SELECT * FROM utenti WHERE email = '$email'";
-        $check_result = mysqli_query($conn, $check_query);
-        if (mysqli_num_rows($check_result) != 0) {
-            echo "<div class='alert alert-danger mx-auto my-3 fixed-top' style='max-width: 600px;'>L'email è già registrata.</div>";
-        	exit;
-        }
-
-        $password_hash = password_hash($password, PASSWORD_DEFAULT);
-        
-        $insert_query = "INSERT INTO utenti (nome, surname, email, password, ruolo) VALUES ('$name', '$surname', '$email', '$password_hash', 0)";
-        mysqli_query($conn, $insert_query);
-
-        echo "<div class='alert alert-success mx-auto my-3 fixed-top' style='max-width: 600px;'>Benvenuto $name! I tuoi dati sono stati salvati correttamente!</div>";
-    
-         mysqli_close($conn);
-
-      }
-      ?>
+      <div id="error-notification" class="alert alert-danger fade show" role="alert"
+        style="display:none; position: fixed; bottom: 20px; right: 20px; z-index: 1050; min-width: 250px;">
+        <span id="error-message"></span>
+      </div>
 
       <div class="container my-5">
         <div class="row justify-content-center">
@@ -76,7 +44,7 @@
               <div class="card-body p-4">
                 <h3 class="text-center mb-4">Crea il tuo account</h3>
 
-                <form method="POST" action="register.php" onsubmit="return checkregister()">
+                <form id="signup-form" method="POST" action="registersignup.php">
                   <div class="mb-3">
                     <label for="name" class="form-label">Nome</label>
                     <input type="text" class="form-control" id="name" name="name" placeholder="Inserisci il tuo nome" required>
@@ -102,6 +70,13 @@
                     <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Ripeti la password" required>
                   </div>
 
+                  <div class="form-check mb-4">
+                    <input class="form-check-input" type="checkbox" id="termini" name="termini" required>
+                    <label class="form-check-label" for="termini">
+                      Accetto i <a href="#">Termini e Condizioni</a>
+                    </label>
+                  </div>
+
                   <div class="d-grid mt-4">
                     <button type="submit" class="btn btn-primary">Registrati</button>
                   </div>
@@ -115,29 +90,7 @@
 
     <?php include 'footer.html'; ?>
 
-    <script>
-      function checkregister(){
-        const pw1 = document.getElementById("password").value;
-        const pw2 = document.getElementById("confirm_password").value;
-        
-        const name = document.getElementById("name").value;
-        const surname = document.getElementById("surname").value;
-
-        const soloLettere = /^[A-Za-z]+$/.test(name) && /^[A-Za-z]+$/.test(surname);
-
-        if (pw1 != pw2 || pw1.length < 8 ){
-          alert("Le password non corrispondono o caratteri non sufficienti");
-          return false;
-        }
-        
-        if (!soloLettere) {
-          alert("Nome e cognome devono contenere solo lettere.");
-          return false;
-        }
-        
-        return true;
-      }
-    </script>
+    <script src="assets/js/auth.js"></script>
 
   </body>
 </html>
