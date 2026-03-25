@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-if (!$conn) {
+if (!isset($conn) || !$conn || mysqli_connect_errno()) {
     http_response_code(500);
     echo json_encode([
         'status' => false,
@@ -20,7 +20,21 @@ if (!$conn) {
 }
 
 $method = $_SERVER['REQUEST_METHOD'];
-$input = json_decode(file_get_contents('php://input'), true) ?? [];
+$rawInput = file_get_contents('php://input');
+$input = json_decode($rawInput, true);
+
+if (!is_array($input)) {
+    $input = $_POST;
+}
+
+function rispondiJson(int $statusCode, bool $status, string $message, array $extra = []): void
+{
+    http_response_code($statusCode);
+    echo json_encode(array_merge([
+        'status' => $status,
+        'message' => $message
+    ], $extra));
+}
 
 switch ($method) {
     case 'GET':
@@ -31,11 +45,7 @@ switch ($method) {
             $utenti[] = $row;
         }
 
-        echo json_encode([
-            'status' => true,
-            'message' => 'Lista utenti',
-            'data' => $utenti
-        ]);
+        rispondiJson(200, true, 'Lista utenti', ['data' => $utenti]);
         break;
 
     case 'POST':
@@ -45,20 +55,12 @@ switch ($method) {
         $password = trim($input['password'] ?? '');
 
         if ($nome === '' || $cognome === '' || $email === '' || $password === '') {
-            http_response_code(422);
-            echo json_encode([
-                'status' => false,
-                'message' => 'I campi nome, surname, email e password sono obbligatori.'
-            ]);
+            rispondiJson(422, false, 'I campi nome, surname, email e password sono obbligatori.');
             break;
         }
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            http_response_code(422);
-            echo json_encode([
-                'status' => false,
-                'message' => 'Email non valida.'
-            ]);
+            rispondiJson(422, false, 'Email non valida.');
             break;
         }
 
@@ -70,11 +72,7 @@ switch ($method) {
         mysqli_stmt_close($checkStmt);
 
         if ($exists) {
-            http_response_code(409);
-            echo json_encode([
-                'status' => false,
-                'message' => 'Email gia presente.'
-            ]);
+            rispondiJson(409, false, 'Email gia presente.');
             break;
         }
 
@@ -85,16 +83,9 @@ switch ($method) {
         mysqli_stmt_close($stmt);
 
         if ($ok) {
-            echo json_encode([
-                'status' => true,
-                'message' => 'Utente aggiunto con successo.'
-            ]);
+            rispondiJson(200, true, 'Utente aggiunto con successo.');
         } else {
-            http_response_code(500);
-            echo json_encode([
-                'status' => false,
-                'message' => 'Errore aggiunta utente.'
-            ]);
+            rispondiJson(500, false, 'Errore aggiunta utente.');
         }
         break;
 
@@ -105,11 +96,7 @@ switch ($method) {
         $ruolo = isset($input['ruolo']) ? (int)$input['ruolo'] : null;
 
         if ($email === '') {
-            http_response_code(422);
-            echo json_encode([
-                'status' => false,
-                'message' => 'Email obbligatoria per aggiornare utente.'
-            ]);
+            rispondiJson(422, false, 'Email obbligatoria per aggiornare utente.');
             break;
         }
 
@@ -136,11 +123,7 @@ switch ($method) {
         }
 
         if (empty($campi)) {
-            http_response_code(422);
-            echo json_encode([
-                'status' => false,
-                'message' => 'Nessun campo da aggiornare.'
-            ]);
+            rispondiJson(422, false, 'Nessun campo da aggiornare.');
             break;
         }
 
@@ -155,16 +138,9 @@ switch ($method) {
         mysqli_stmt_close($stmt);
 
         if ($ok && $righeAggiornate >= 0) {
-            echo json_encode([
-                'status' => true,
-                'message' => 'Utente aggiornato con successo.'
-            ]);
+            rispondiJson(200, true, 'Utente aggiornato con successo.');
         } else {
-            http_response_code(500);
-            echo json_encode([
-                'status' => false,
-                'message' => 'Errore aggiornamento utente.'
-            ]);
+            rispondiJson(500, false, 'Errore aggiornamento utente.');
         }
         break;
 
@@ -172,11 +148,7 @@ switch ($method) {
         $email = trim($input['email'] ?? '');
 
         if ($email === '') {
-            http_response_code(422);
-            echo json_encode([
-                'status' => false,
-                'message' => 'Email obbligatoria per eliminare utente.'
-            ]);
+            rispondiJson(422, false, 'Email obbligatoria per eliminare utente.');
             break;
         }
 
@@ -187,25 +159,14 @@ switch ($method) {
         mysqli_stmt_close($stmt);
 
         if ($ok && $righeEliminate > 0) {
-            echo json_encode([
-                'status' => true,
-                'message' => 'Utente eliminato con successo.'
-            ]);
+            rispondiJson(200, true, 'Utente eliminato con successo.');
         } else {
-            http_response_code(404);
-            echo json_encode([
-                'status' => false,
-                'message' => 'Utente non trovato o non eliminato.'
-            ]);
+            rispondiJson(404, false, 'Utente non trovato o non eliminato.');
         }
         break;
 
     default:
-        http_response_code(405);
-        echo json_encode([
-            'status' => false,
-            'message' => 'Metodo non supportato.'
-        ]);
+        rispondiJson(405, false, 'Metodo non supportato.');
         break;
 }
 

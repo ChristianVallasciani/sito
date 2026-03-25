@@ -1,8 +1,8 @@
 <?php
 $host = "localhost";
-$dbname = "my_christianvallasciani";
-$user = "christianvallasciani";       
-$pass = "";
+$dbname = "ina5_vallasciani";
+$user = "ina5";       
+$pass = "Venita3#";
 
 $conn = mysqli_connect($host, $user, $pass, $dbname);
 
@@ -11,3 +11,5 @@ if (!$conn) {
 }
 
 mysqli_set_charset($conn, 'utf8mb4');
+
+
